@@ -1,0 +1,184 @@
+BACKEND OAUTH CONFIGURATION REQUEST - UNREGISTERED USERS
+========================================================
+
+ISSUE SUMMARY:
+Currently, when unregistered users try to use "Continue with Google", they get redirected to the login page with no error message or token. The OAuth flow needs to support automatic user registration for new Google accounts.
+
+REQUIRED BACKEND CHANGES:
+=========================
+
+1. GOOGLE OAUTH FLOW FOR NEW USERS
+----------------------------------
+Current behavior: Redirect to /login if user doesn't exist
+Required behavior: Automatically create new user account with Google data
+
+The backend should modify the Google OAuth callback handler to:
+
+A) When Google returns user data, check if user exists:
+   - If user exists: Generate token and redirect to success URL
+   - If user doesn't exist: CREATE NEW USER and then generate token
+
+B) New user creation should populate:
+   - email (from Google profile)
+   - full_name or first_name/last_name (from Google profile)
+   - google_id (from Google profile)
+   - profile_picture (from Google profile URL)
+   - email_verified: true (since Google verified it)
+   - user_type: 'landing_user' (or appropriate default)
+   - created_via: 'google_oauth'
+
+2. OAUTH SUCCESS REDIRECT URL
+-----------------------------
+After successful OAuth (both existing and new users), redirect to:
+Frontend URL: http://localhost:3000/auth/callback
+
+With these query parameters:
+- token: JWT token for the user
+- is_new: true/false (whether account was just created)
+- user_type: user type ('landing_user', 'admin_user', etc.)
+
+Example success URL:
+http://localhost:3000/auth/callback?token=eyJhbGciOiJIUzI1NiIs...&is_new=true&user_type=landing_user
+
+3. OAUTH ERROR HANDLING
+-----------------------
+If OAuth fails, redirect to:
+Frontend URL: http://localhost:3000/login
+
+With error parameter:
+- error: error_code
+
+Example error URL:
+http://localhost:3000/login?error=oauth_error
+
+Common error codes to handle:
+- oauth_cancelled: User cancelled Google OAuth
+- oauth_error: General OAuth failure
+- access_denied: User denied permissions
+- invalid_request: Invalid OAuth request
+
+4. GOOGLE CONSOLE CONFIGURATION
+-------------------------------
+Ensure Google OAuth Console has these redirect URIs:
+- http://localhost:5000/api/oauth/google/callback
+- https://yourdomain.com/api/oauth/google/callback (for production)
+
+5. BACKEND OAUTH ENDPOINTS
+--------------------------
+Required endpoints:
+
+GET /api/oauth/google?type=landing
+- Initiates Google OAuth for landing users
+- Redirects to Google OAuth consent screen
+
+GET /api/oauth/google?type=admin  
+- Initiates Google OAuth for admin users
+- Redirects to Google OAuth consent screen
+
+GET /api/oauth/google/callback
+- Handles Google OAuth callback
+- Creates new users if they don't exist
+- Generates JWT tokens
+- Redirects to frontend with success/error
+
+6. EXAMPLE BACKEND OAUTH CALLBACK LOGIC
+--------------------------------------
+```javascript
+// Simplified pseudo-code for OAuth callback
+app.get('/api/oauth/google/callback', async (req, res) => {
+  try {
+    const { code, state } = req.query;
+    
+    // Exchange code for Google user data
+    const googleUser = await getGoogleUserData(code);
+    
+    // Check if user exists
+    let user = await User.findOne({ email: googleUser.email });
+    let isNew = false;
+    
+    if (!user) {
+      // CREATE NEW USER
+      user = await User.create({
+        email: googleUser.email,
+        full_name: googleUser.name,
+        google_id: googleUser.id,
+        profile_picture: googleUser.picture,
+        email_verified: true,
+        user_type: extractUserTypeFromState(state) || 'landing_user',
+        created_via: 'google_oauth'
+      });
+      isNew = true;
+    }
+    
+    // Generate JWT token
+    const token = generateJWT(user);
+    
+    // Redirect to frontend with success
+    const redirectUrl = `http://localhost:3000/auth/callback?token=${token}&is_new=${isNew}&user_type=${user.user_type}`;
+    res.redirect(redirectUrl);
+    
+  } catch (error) {
+    console.error('OAuth error:', error);
+    // Redirect to frontend with error
+    res.redirect('http://localhost:3000/login?error=oauth_error');
+  }
+});
+```
+
+7. DATABASE SCHEMA UPDATES
+--------------------------
+Ensure user table/model has these fields:
+- google_id (string, nullable, unique)
+- profile_picture (string, nullable) 
+- email_verified (boolean, default false)
+- created_via (string, default 'email') // 'email' or 'google_oauth'
+
+8. ENVIRONMENT VARIABLES
+------------------------
+Ensure these are configured:
+- GOOGLE_CLIENT_ID
+- GOOGLE_CLIENT_SECRET
+- GOOGLE_REDIRECT_URI=http://localhost:5000/api/oauth/google/callback
+- FRONTEND_URL=http://localhost:3000
+- JWT_SECRET
+
+9. TESTING CHECKLIST
+--------------------
+Test these scenarios:
+
+A) New User Google OAuth:
+   1. Unregistered user clicks "Continue with Google"
+   2. Completes Google OAuth
+   3. Should redirect to: http://localhost:3000/auth/callback?token=xxx&is_new=true&user_type=landing_user
+   4. User should be automatically logged in
+
+B) Existing User Google OAuth:
+   1. Registered user clicks "Continue with Google"  
+   2. Completes Google OAuth
+   3. Should redirect to: http://localhost:3000/auth/callback?token=xxx&is_new=false&user_type=landing_user
+   4. User should be automatically logged in
+
+C) OAuth Error:
+   1. User cancels Google OAuth
+   2. Should redirect to: http://localhost:3000/login?error=oauth_cancelled
+
+10. SECURITY CONSIDERATIONS
+---------------------------
+- Validate Google OAuth state parameter to prevent CSRF
+- Ensure email from Google matches the domain requirements (if any)
+- Rate limit OAuth attempts
+- Log OAuth activities for security monitoring
+
+CURRENT PROBLEM:
+===============
+Users clicking "Continue with Google" end up at http://localhost:3000/login with no parameters, suggesting the backend is not properly handling new user registration during OAuth flow.
+
+EXPECTED RESULT AFTER IMPLEMENTATION:
+====================================
+✅ New users can sign up via Google OAuth
+✅ Existing users can sign in via Google OAuth  
+✅ Both scenarios redirect to frontend with proper tokens
+✅ Frontend receives OAuth results and processes them correctly
+✅ Users are automatically authenticated after OAuth success
+
+Please implement these changes and test with both registered and unregistered Google accounts. 

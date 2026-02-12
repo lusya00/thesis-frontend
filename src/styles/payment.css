@@ -1,0 +1,280 @@
+/* Payment Flow Styles */
+.booking-flow-container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.payment-page {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+}
+
+.payment-header {
+  display: flex;
+  align-items: center;
+  padding: 20px;
+  background: white;
+  border-bottom: 1px solid #eee;
+}
+
+.back-button {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  margin-right: 10px;
+}
+
+.payment-content {
+  padding: 20px;
+}
+
+.booking-summary {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.total-amount {
+  font-weight: bold;
+  color: #e74c3c;
+  font-size: 18px;
+}
+
+.payment-timer {
+  text-align: center;
+  color: #f39c12;
+  font-weight: bold;
+  margin-top: 10px;
+}
+
+.payment-status {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.status-pending {
+  color: #f39c12;
+  font-size: 18px;
+}
+
+.status-completed {
+  color: #27ae60;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.status-icon {
+  margin-right: 8px;
+}
+
+/* QRIS Styles */
+.qris-payment {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.qris-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.payment-methods {
+  margin-bottom: 20px;
+}
+
+.method-icons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.method {
+  background: #f8f9fa;
+  padding: 10px;
+  border-radius: 5px;
+  text-align: center;
+}
+
+.show-qr-btn {
+  width: 100%;
+  padding: 15px;
+  font-size: 16px;
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.qr-code-container {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.qr-code-image {
+  max-width: 300px;
+  width: 100%;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+}
+
+.qris-instructions {
+  margin-bottom: 20px;
+}
+
+.qris-instructions ol {
+  padding-left: 20px;
+}
+
+.qris-instructions li {
+  margin-bottom: 8px;
+}
+
+.qris-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.btn-secondary {
+  padding: 10px 20px;
+  background: #95a5a6;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.btn-test {
+  padding: 10px 20px;
+  background: #e67e22;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.payment-info {
+  text-align: center;
+  border-top: 1px solid #eee;
+  padding-top: 15px;
+}
+
+.amount {
+  font-size: 18px;
+  font-weight: bold;
+  color: #e74c3c;
+}
+
+.booking-ref {
+  color: #7f8c8d;
+  font-size: 14px;
+}
+
+/* Success Page Styles */
+.payment-success {
+  text-align: center;
+  padding: 40px 20px;
+  background: white;
+  border-radius: 8px;
+}
+
+.success-icon .checkmark {
+  font-size: 64px;
+  color: #27ae60;
+}
+
+.booking-details {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  margin: 20px 0;
+}
+
+.detail-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.booking-number {
+  font-weight: bold;
+  color: #3498db;
+}
+
+.status-confirmed {
+  color: #27ae60;
+  font-weight: bold;
+}
+
+.next-steps {
+  text-align: left;
+  margin: 20px 0;
+}
+
+.next-steps ul {
+  list-style: none;
+  padding: 0;
+}
+
+.next-steps li {
+  margin-bottom: 8px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 30px;
+}
+
+.test-mode-notice {
+  background: #fff3cd;
+  color: #856404;
+  padding: 10px;
+  border-radius: 5px;
+  margin-top: 20px;
+  text-align: center;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .qris-actions {
+    flex-direction: column;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+  }
+  
+  .qr-code-image {
+    max-width: 250px;
+  }
+}
+
+/* Print styles for confirmation */
+@media print {
+  .payment-page, .payment-success {
+    background: white !important;
+  }
+  
+  .action-buttons {
+    display: none;
+  }
+  
+  .test-mode-notice {
+    display: none;
+  }
+} 

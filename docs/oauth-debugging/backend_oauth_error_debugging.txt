@@ -1,0 +1,295 @@
+BACKEND OAUTH ERROR DEBUGGING GUIDE
+===================================
+
+ERROR SUMMARY:
+Backend is throwing "AppError: Failed to process Google authentication" at line 119 of oauth.service.ts
+and redirecting users to http://localhost:3000/login?error=oauth_error instead of completing authentication.
+
+DEBUGGING STEPS:
+===============
+
+1. CHECK GOOGLE OAUTH CONFIGURATION
+-----------------------------------
+Verify these environment variables in your backend .env file:
+
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+GOOGLE_REDIRECT_URI=http://localhost:5000/api/oauth/google/callback
+FRONTEND_URL=http://localhost:3000
+JWT_SECRET=your_jwt_secret
+
+⚠️ CRITICAL: Make sure GOOGLE_REDIRECT_URI exactly matches what's configured in Google Console!
+
+2. CHECK GOOGLE CONSOLE CONFIGURATION
+-------------------------------------
+In Google OAuth Console, verify:
+- Authorized redirect URIs includes: http://localhost:5000/api/oauth/google/callback
+- Client ID and Secret match your .env file
+- OAuth consent screen is properly configured
+- Required scopes are enabled (email, profile, openid)
+
+3. ADD DETAILED LOGGING TO OAUTH SERVICE
+----------------------------------------
+In oauth.service.ts around line 119, add more specific error logging:
+
+```typescript
+async handleGoogleCallback(code: string, state?: string) {
+  try {
+    console.log('[OAUTH] Starting Google callback with code:', code?.substring(0, 20) + '...');
+    console.log('[OAUTH] State parameter:', state);
+    
+    // Step 1: Exchange code for tokens
+    console.log('[OAUTH] Exchanging code for tokens...');
+    const tokenResponse = await this.exchangeCodeForTokens(code);
+    console.log('[OAUTH] Token exchange successful');
+    
+    // Step 2: Get user info from Google
+    console.log('[OAUTH] Fetching Google user info...');
+    const googleUser = await this.getGoogleUserInfo(tokenResponse.access_token);
+    console.log('[OAUTH] Google user info:', {
+      id: googleUser.id,
+      email: googleUser.email,
+      name: googleUser.name,
+      verified_email: googleUser.verified_email
+    });
+    
+    // Step 3: Find or create user
+    console.log('[OAUTH] Looking for existing user with email:', googleUser.email);
+    let user = await this.findUserByEmail(googleUser.email);
+    
+    let isNew = false;
+    if (!user) {
+      console.log('[OAUTH] User not found, creating new user...');
+      user = await this.createUserFromGoogle(googleUser, state);
+      isNew = true;
+      console.log('[OAUTH] New user created with ID:', user.id);
+    } else {
+      console.log('[OAUTH] Existing user found with ID:', user.id);
+    }
+    
+    // Step 4: Generate JWT token
+    console.log('[OAUTH] Generating JWT token...');
+    const jwtToken = await this.generateJWTToken(user);
+    console.log('[OAUTH] JWT token generated successfully');
+    
+    return {
+      user,
+      token: jwtToken,
+      isNew
+    };
+    
+  } catch (error) {
+    console.error('[OAUTH] Detailed error at step:', error.message);
+    console.error('[OAUTH] Error stack:', error.stack);
+    console.error('[OAUTH] Error details:', error);
+    throw new AppError('Failed to process Google authentication', 500);
+  }
+}
+```
+
+4. COMMON FAILURE POINTS TO CHECK
+---------------------------------
+
+A) TOKEN EXCHANGE FAILURE:
+   - Google Client ID/Secret mismatch
+   - Redirect URI mismatch
+   - Expired or invalid authorization code
+
+B) USER INFO RETRIEVAL FAILURE:
+   - Invalid access token
+   - Google API quota exceeded
+   - Network connectivity issues
+
+C) DATABASE OPERATION FAILURE:
+   - User creation fails due to validation errors
+   - Database connection issues
+   - Missing required fields in user model
+
+D) JWT TOKEN GENERATION FAILURE:
+   - Missing JWT_SECRET environment variable
+   - Invalid user data for token payload
+   - JWT library configuration issues
+
+5. SPECIFIC CHECKS FOR USER CREATION
+-----------------------------------
+Make sure your user creation handles these fields properly:
+
+```typescript
+async createUserFromGoogle(googleUser: any, state?: string) {
+  console.log('[OAUTH] Creating user with data:', {
+    email: googleUser.email,
+    name: googleUser.name,
+    google_id: googleUser.id,
+    verified_email: googleUser.verified_email
+  });
+  
+  try {
+    const newUser = await User.create({
+      email: googleUser.email,
+      full_name: googleUser.name,
+      first_name: googleUser.given_name || googleUser.name?.split(' ')[0],
+      last_name: googleUser.family_name || googleUser.name?.split(' ')[1],
+      google_id: googleUser.id,
+      profile_picture: googleUser.picture,
+      email_verified: googleUser.verified_email || true,
+      user_type: this.extractUserTypeFromState(state) || 'landing_user',
+      created_via: 'google_oauth',
+      is_verified: true
+    });
+    
+    console.log('[OAUTH] User created successfully:', newUser.id);
+    return newUser;
+  } catch (error) {
+    console.error('[OAUTH] User creation failed:', error.message);
+    console.error('[OAUTH] User creation error details:', error);
+    throw error;
+  }
+}
+```
+
+6. DATABASE SCHEMA VERIFICATION
+-------------------------------
+Ensure your user table has these columns:
+- email (string, unique, required)
+- full_name or first_name/last_name (string)
+- google_id (string, nullable, unique)
+- profile_picture (string, nullable)
+- email_verified (boolean, default false)
+- user_type (string, default 'landing_user')
+- created_via (string, default 'email')
+- is_verified (boolean, default false)
+
+7. TEST WITH MINIMAL USER DATA
+------------------------------
+Try creating a user with minimal required fields first:
+
+```typescript
+const newUser = await User.create({
+  email: googleUser.email,
+  full_name: googleUser.name || 'Google User',
+  google_id: googleUser.id,
+  email_verified: true,
+  user_type: 'landing_user'
+});
+```
+
+8. CHECK JWT TOKEN GENERATION
+-----------------------------
+Verify JWT_SECRET is set and token generation works:
+
+```typescript
+async generateJWTToken(user: any) {
+  try {
+    console.log('[OAUTH] Generating token for user:', user.id);
+    
+    if (!process.env.JWT_SECRET) {
+      throw new Error('JWT_SECRET environment variable not set');
+    }
+    
+    const payload = {
+      id: user.id,
+      email: user.email,
+      type: user.type || 'user',
+      user_type: user.user_type || 'landing_user'
+    };
+    
+    console.log('[OAUTH] JWT payload:', payload);
+    
+    const token = jwt.sign(payload, process.env.JWT_SECRET, {
+      expiresIn: '24h'
+    });
+    
+    console.log('[OAUTH] JWT token generated, length:', token.length);
+    return token;
+  } catch (error) {
+    console.error('[OAUTH] JWT generation failed:', error.message);
+    throw error;
+  }
+}
+```
+
+9. QUICK TEST COMMANDS
+----------------------
+Test these manually in your backend:
+
+A) Test Google token exchange:
+```bash
+curl "https://oauth2.googleapis.com/token" \
+  -d "client_id=YOUR_CLIENT_ID" \
+  -d "client_secret=YOUR_CLIENT_SECRET" \
+  -d "code=TEST_CODE" \
+  -d "grant_type=authorization_code" \
+  -d "redirect_uri=http://localhost:5000/api/oauth/google/callback"
+```
+
+B) Test database user creation:
+```javascript
+// In your backend console/test file
+const user = await User.create({
+  email: 'test@gmail.com',
+  full_name: 'Test User',
+  google_id: '123456789',
+  user_type: 'landing_user'
+});
+console.log('User created:', user.id);
+```
+
+10. TEMPORARY WORKAROUND
+-----------------------
+To identify the exact failure point, temporarily simplify the OAuth callback:
+
+```typescript
+async handleGoogleCallback(code: string, state?: string) {
+  try {
+    // Step 1: Just try token exchange
+    console.log('[OAUTH] Step 1: Token exchange');
+    const tokens = await this.exchangeCodeForTokens(code);
+    console.log('[OAUTH] Step 1: SUCCESS');
+    
+    // Step 2: Try getting user info
+    console.log('[OAUTH] Step 2: Get user info');
+    const googleUser = await this.getGoogleUserInfo(tokens.access_token);
+    console.log('[OAUTH] Step 2: SUCCESS');
+    
+    // Step 3: Try finding existing user
+    console.log('[OAUTH] Step 3: Find user');
+    let user = await this.findUserByEmail(googleUser.email);
+    console.log('[OAUTH] Step 3: SUCCESS');
+    
+    // Step 4: If no user, try creating one
+    if (!user) {
+      console.log('[OAUTH] Step 4: Create user');
+      user = await this.createUserFromGoogle(googleUser);
+      console.log('[OAUTH] Step 4: SUCCESS');
+    }
+    
+    // Step 5: Try generating token
+    console.log('[OAUTH] Step 5: Generate JWT');
+    const token = await this.generateJWTToken(user);
+    console.log('[OAUTH] Step 5: SUCCESS');
+    
+    return { user, token, isNew: !user };
+    
+  } catch (error) {
+    console.error('[OAUTH] Failed at step with error:', error.message);
+    throw new AppError(`OAuth failed: ${error.message}`, 500);
+  }
+}
+```
+
+NEXT STEPS:
+==========
+1. Add the detailed logging above to your oauth.service.ts
+2. Try the OAuth flow again and check which step fails
+3. Share the specific error message and step where it fails
+4. We can then provide targeted fixes for that specific issue
+
+EXPECTED SUCCESS LOG:
+====================
+When working correctly, you should see:
+[OAUTH] Step 1: SUCCESS
+[OAUTH] Step 2: SUCCESS  
+[OAUTH] Step 3: SUCCESS
+[OAUTH] Step 4: SUCCESS (for new users)
+[OAUTH] Step 5: SUCCESS
+And user should be redirected to: http://localhost:3000/auth/callback?token=xxx&is_new=true 

@@ -1,0 +1,185 @@
+QRIS PAYMENT SYSTEM - BACKEND REQUIREMENTS
+=====================================================
+
+OVERVIEW:
+The frontend is ready for QRIS payment integration. The backend needs to implement 3 main endpoints to support Indonesian payment processing through QRIS (Quick Response Code Indonesian Standard).
+
+REQUIRED API ENDPOINTS:
+======================
+
+1. CREATE QRIS PAYMENT
+   Endpoint: POST /api/qris/create
+   
+   Request Body:
+   {
+     "booking_id": 58,
+     "customer_name": "Tashinga Ryan Corleone",
+     "customer_email": "tashiemanunure@gmail.com"
+   }
+   
+   Required Response Format:
+   {
+     "status": "success",
+     "data": {
+       "id": 123456,
+       "booking_id": 58,
+       "amount": 150000,
+       "qr_code": "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=QRIS_DATA_STRING",
+       "payment_status": "PENDING",
+       "expires_at": "2025-06-16T17:30:00Z",
+       "is_test_mode": true,
+       "xendit_invoice_id": "invoice_12345"
+     }
+   }
+
+2. CHECK PAYMENT STATUS
+   Endpoint: GET /api/qris/status/{booking_id}
+   
+   Required Response Format:
+   {
+     "status": "success",
+     "data": {
+       "payment_status": "PENDING|COMPLETED|FAILED|EXPIRED",
+       "payment_completed_at": "2025-06-16T17:15:00Z",
+       "booking_status": "pending|confirmed"
+     }
+   }
+
+3. SIMULATE PAYMENT (for testing)
+   Endpoint: POST /api/qris/simulate/{booking_id}
+   
+   Required Response Format:
+   {
+     "status": "success",
+     "data": {
+       "payment_status": "COMPLETED",
+       "payment_completed_at": "2025-06-16T17:15:00Z",
+       "booking_status": "confirmed"
+     }
+   }
+
+AUTHENTICATION:
+==============
+- All endpoints should support optional Bearer token authentication
+- Headers: Authorization: Bearer {jwt_token}
+- If token is provided, validate it
+- If no token, treat as guest payment
+
+BUSINESS LOGIC REQUIREMENTS:
+============================
+
+1. PAYMENT CREATION:
+   - Validate booking exists and belongs to user (if authenticated)
+   - Calculate total amount from booking details
+   - Generate unique payment ID
+   - Create QR code with proper QRIS format
+   - Set expiration time (15 minutes recommended)
+   - Store payment record in database
+   - Return payment details
+
+2. PAYMENT STATUS:
+   - Check current payment status in database
+   - If using real payment gateway (Xendit/Midtrans), sync with their API
+   - Return current status and timestamps
+   - Update booking status if payment completed
+
+3. PAYMENT SIMULATION:
+   - FOR TESTING ONLY - mark payment as completed
+   - Update booking status to "confirmed"
+   - Set payment_completed_at timestamp
+   - Return success response
+
+DATABASE SCHEMA SUGGESTIONS:
+============================
+
+qris_payments table:
+- id (PRIMARY KEY)
+- booking_id (FOREIGN KEY to bookings table)
+- amount (DECIMAL)
+- qr_code (TEXT)
+- payment_status (ENUM: PENDING, COMPLETED, FAILED, EXPIRED)
+- xendit_invoice_id (VARCHAR, nullable)
+- expires_at (DATETIME)
+- payment_completed_at (DATETIME, nullable)
+- is_test_mode (BOOLEAN)
+- created_at (DATETIME)
+- updated_at (DATETIME)
+
+INTEGRATION OPTIONS:
+===================
+
+Option 1: XENDIT (Recommended for Indonesia)
+- Sign up at xendit.com
+- Use their Invoice API for QRIS
+- Documentation: https://developers.xendit.co/api-reference/#invoices
+
+Option 2: MIDTRANS
+- Sign up at midtrans.com
+- Use their QR Code API
+- Documentation: https://docs.midtrans.com/
+
+Option 3: SIMPLE IMPLEMENTATION (for testing)
+- Generate QR codes using online services
+- Store payment data in database
+- Use simulate endpoint for testing
+- Upgrade to real payment gateway later
+
+CURRENT FRONTEND BEHAVIOR:
+=========================
+1. User clicks "Continue to Payment"
+2. Booking is created successfully (✅ WORKING)
+3. Frontend calls POST /api/qris/create (❌ 404 ERROR)
+4. Expected: Redirect to payment page with QR code
+5. Actual: Falls back to "booking confirmed" page
+
+ERROR CURRENTLY SEEN:
+====================
+POST http://localhost:5000/api/qris/create 404 (Not Found)
+Response: "Cannot POST /api/qris/create"
+
+PAYMENT FLOW FRONTEND EXPECTS:
+==============================
+1. Create booking (✅ working)
+2. Create QRIS payment (❌ needs backend)
+3. Show payment page with QR code
+4. Poll payment status every 3 seconds
+5. When payment completed, show success page
+6. Update booking status to confirmed
+
+TESTING INSTRUCTIONS:
+====================
+Once implemented:
+1. Start backend server
+2. Go to booking page: localhost:3000/book?homestay=49&room=11
+3. Fill booking form
+4. Click "Continue to Payment"
+5. Should see payment page with QR code
+6. Use "Simulate Payment" button to test completion
+7. Should redirect to success page
+
+INDONESIAN PAYMENT METHODS TO SUPPORT:
+======================================
+The QR code should support:
+- GoPay
+- OVO  
+- DANA
+- ShopeePay
+- BCA Mobile
+- BRI Mobile
+- BNI Mobile
+- Other QRIS-compatible apps
+
+SAMPLE QR CODE DATA:
+===================
+For testing, QR code can contain:
+"QRIS_BOOKING_{booking_id}_AMOUNT_{amount}_TIME_{timestamp}"
+
+For production, use proper QRIS format from payment gateway.
+
+PRIORITY:
+=========
+HIGH PRIORITY: Implement endpoint #1 (POST /api/qris/create) first
+MEDIUM PRIORITY: Implement endpoint #2 (GET /api/qris/status/{id})  
+LOW PRIORITY: Implement endpoint #3 (POST /api/qris/simulate/{id})
+
+This will enable basic payment flow. Endpoints #2 and #3 can return simple responses initially. 

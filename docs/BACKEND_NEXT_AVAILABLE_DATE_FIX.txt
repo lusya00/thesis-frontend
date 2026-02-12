@@ -1,0 +1,252 @@
+BACKEND "NEXT AVAILABLE DATE" LOGIC FIX
+
+========================================================================
+ISSUE SUMMARY:
+========================================================================
+
+1. WRONG "NEXT AVAILABLE DATE" LOGIC:
+   - User wants to book June 9-10
+   - June 7-8 is booked  
+   - Backend incorrectly says "available from June 7"
+   - Should say "available from June 9" (the user's requested date) or just "available"
+
+2. DATE FORMAT INCONSISTENCY:
+   - Frontend expects specific date formats from backend
+   - Mixed date formats causing confusion
+
+========================================================================
+FRONTEND DATE FORMAT EXPECTATIONS:
+========================================================================
+
+The frontend expects these date formats from backend:
+
+1. API REQUEST DATES (what frontend sends):
+   ✅ Format: "YYYY-MM-DD" (e.g., "2025-06-09")
+   ✅ Examples: "2025-06-05", "2025-12-25"
+
+2. API RESPONSE DATES (what backend should return):
+   ✅ Format: "YYYY-MM-DD" for dates
+   ✅ Format: "HH:MM" for times (e.g., "14:30")
+   ✅ Format: "YYYY-MM-DDTHH:MM:SS.000Z" for full timestamps (ISO format)
+
+SPECIFIC FIELDS:
+- start_date: "YYYY-MM-DD"
+- end_date: "YYYY-MM-DD" 
+- checkout_time: "HH:MM"
+- next_available_date: "YYYY-MM-DD"
+- earliest_booking_time: "HH:MM" or "now" or "YYYY-MM-DD"
+
+========================================================================
+BACKEND LOGIC BUG: "NEXT AVAILABLE DATE"
+========================================================================
+
+CURRENT WRONG LOGIC:
+```javascript
+// ❌ WRONG: Always returns the end date of conflicting booking
+const checkRoomAvailability = async (roomId, startDate, endDate) => {
+  // ... conflict detection ...
+  
+  return {
+    is_available: !hasConflict,
+    next_available_date: conflictingBooking ? 
+      moment(conflictingBooking.end_date).format('YYYY-MM-DD') : null  // ← WRONG!
+  };
+};
+```
+
+FIXED CORRECT LOGIC:
+```javascript
+// ✅ CORRECT: Smart next available date logic
+const checkRoomAvailability = async (roomId, startDate, endDate) => {
+  const requestStart = moment(startDate).startOf('day');
+  const requestEnd = moment(endDate).startOf('day');
+  
+  // Get all bookings for this room
+  const bookings = await Booking.findAll({
+    where: { 
+      room_id: roomId,
+      status: ['confirmed', 'pending', 'checked_in']
+    },
+    order: [['start_date', 'ASC']]
+  });
+  
+  // Check for conflicts with each booking
+  let hasConflict = false;
+  let conflictingBooking = null;
+  
+  for (const booking of bookings) {
+    const bookingStart = moment(booking.start_date).startOf('day');
+    const bookingEnd = moment(booking.end_date).startOf('day');
+    
+    const conflicts = requestStart.isBefore(bookingEnd) && requestEnd.isAfter(bookingStart);
+    
+    if (conflicts) {
+      hasConflict = true;
+      conflictingBooking = booking;
+      break;
+    }
+  }
+  
+  // ✅ SMART NEXT AVAILABLE DATE LOGIC
+  let nextAvailableDate = null;
+  
+  if (hasConflict) {
+    // If there's a conflict, find the next truly available date
+    nextAvailableDate = findNextAvailableDate(roomId, conflictingBooking.end_date);
+  } else {
+    // If no conflict, the requested dates are available
+    // Don't return a "next available date" - the room IS available
+    nextAvailableDate = null;
+  }
+  
+  return {
+    is_available: !hasConflict,
+    room_status: hasConflict ? 'occupied' : 'available',
+    has_bookings: bookings.length > 0,
+    current_booking: conflictingBooking,
+    next_available_date: nextAvailableDate
+  };
+};
+
+// Helper function to find truly next available date
+const findNextAvailableDate = (roomId, fromDate) => {
+  const searchStart = moment(fromDate).add(1, 'day'); // Day after conflict ends
+  
+  // Search for next available period (simple implementation)
+  for (let i = 0; i < 30; i++) { // Check next 30 days
+    const checkDate = searchStart.clone().add(i, 'days');
+    const checkEnd = checkDate.clone().add(1, 'day');
+    
+    // Check if this date has conflicts
+    const hasConflictOnDate = bookings.some(booking => {
+      const bookingStart = moment(booking.start_date).startOf('day');
+      const bookingEnd = moment(booking.end_date).startOf('day');
+      return checkDate.isBefore(bookingEnd) && checkEnd.isAfter(bookingStart);
+    });
+    
+    if (!hasConflictOnDate) {
+      return checkDate.format('YYYY-MM-DD');
+    }
+  }
+  
+  return null; // No availability found in next 30 days
+};
+```
+
+========================================================================
+EXAMPLE SCENARIOS (FIXED BEHAVIOR):
+========================================================================
+
+SCENARIO 1: Room Available for Requested Dates
+- Existing: June 5-6
+- Request: June 9-10
+- Response: 
+  ```json
+  {
+    "is_available": true,
+    "room_status": "available", 
+    "next_available_date": null  // ← No "next" date needed - it's available now!
+  }
+  ```
+
+SCENARIO 2: Room Conflicting with Requested Dates  
+- Existing: June 7-9
+- Request: June 8-10
+- Response:
+  ```json
+  {
+    "is_available": false,
+    "room_status": "occupied",
+    "next_available_date": "2025-06-10"  // ← Next truly available date
+  }
+  ```
+
+SCENARIO 3: Multiple Bookings
+- Existing: June 5-6, June 8-9, June 12-13
+- Request: June 7-8 
+- Response:
+  ```json
+  {
+    "is_available": false,
+    "room_status": "occupied", 
+    "current_booking": { /* June 8-9 booking */ },
+    "next_available_date": "2025-06-10"  // ← First gap after conflict
+  }
+  ```
+
+========================================================================
+DATE FORMAT FIXES:
+========================================================================
+
+1. ENSURE CONSISTENT DATE OUTPUT:
+```javascript
+// ✅ Always use YYYY-MM-DD format for dates
+const formatDate = (date) => {
+  return moment(date).format('YYYY-MM-DD');
+};
+
+// ✅ Always use HH:MM format for times  
+const formatTime = (time) => {
+  return moment(time).format('HH:MM');
+};
+```
+
+2. SAME-DAY BOOKING ENDPOINT CONSISTENCY:
+```javascript
+// Make sure same-day endpoint uses same date formats
+app.get('/api/bookings/room/:roomId/same-day-availability', async (req, res) => {
+  // ... logic ...
+  
+  res.json({
+    status: 'success',
+    data: {
+      is_available: true,
+      early_checkout: true,
+      checkout_time: "16:50",              // ← HH:MM format
+      housekeeping_complete_time: "18:50", // ← HH:MM format  
+      earliest_booking_time: "now",        // ← "now" or HH:MM
+      next_available_date: "2025-06-07"    // ← YYYY-MM-DD format
+    }
+  });
+});
+```
+
+========================================================================
+FRONTEND DISPLAY FIXES:
+========================================================================
+
+The frontend will automatically handle the corrected logic properly because:
+
+1. If next_available_date is null → Shows "Available" ✅
+2. If next_available_date has value → Shows "Available from [date]" ✅
+3. Date formatting is handled by frontend Date.toLocaleDateString() ✅
+
+========================================================================
+TESTING:
+========================================================================
+
+Test these scenarios after implementing the fix:
+
+1. Book room June 5-6, then try booking June 9-10:
+   Expected: Should show "Available" (no "from June 7" message)
+
+2. Book room June 7-9, then try booking June 8-10:  
+   Expected: Should show "Available from June 10"
+
+3. Book room June 5-6, then try booking June 6-7:
+   Expected: Should show "Available" (adjacent dates OK)
+
+4. Check date formats in all responses:
+   Expected: All dates as "YYYY-MM-DD", all times as "HH:MM"
+
+========================================================================
+SUMMARY:
+========================================================================
+
+The main issue is that the backend returns next_available_date even when 
+the requested dates ARE available. The logic should be:
+
+- Available dates requested → next_available_date: null
+- Conflicting dates requested → next_available_date: first truly available date
+
+Fix the logic and ensure consistent YYYY-MM-DD date formatting throughout! 

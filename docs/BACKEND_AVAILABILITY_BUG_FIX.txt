@@ -1,0 +1,254 @@
+BACKEND AVAILABILITY LOGIC BUG - URGENT FIX REQUIRED
+
+========================================================================
+ISSUE SUMMARY:
+========================================================================
+
+The room availability endpoint (/api/bookings/room/{id}/availability) has a critical 
+date range logic bug that prevents users from booking rooms for dates that should 
+be available.
+
+CURRENT PROBLEM:
+- Booking: Room 11 from June 5-6 (completed successfully)
+- Attempt: Book same room from June 7-8 
+- Expected: Should be available ✅
+- Actual: Shows "not available" ❌
+
+BACKEND RESPONSE BUG:
+{
+  "is_available": false,
+  "room_status": "occupied", 
+  "has_bookings": false,           ← CONTRADICTORY!
+  "current_booking": {...},
+  "next_available_date": "2025-06-06T22:00:00.000Z"
+}
+
+========================================================================
+ROOT CAUSE ANALYSIS:
+========================================================================
+
+1. DATE RANGE LOGIC BUG: 
+   - Backend treats checkout dates as INCLUSIVE instead of EXCLUSIVE
+   - Guest books June 5-6, should checkout on June 6 morning
+   - Room should be available for new booking starting June 6 or 7
+
+2. TIMEZONE ISSUES:
+   - next_available_date shows UTC time (22:00:00.000Z)
+   - Frontend uses local dates (YYYY-MM-DD format)
+   - Mismatch causes availability calculation errors
+
+3. CONTRADICTORY DATA:
+   - room_status: "occupied" but has_bookings: false
+   - Indicates data consistency issues
+
+========================================================================
+REQUIRED FIXES:
+========================================================================
+
+FIX 1: CORRECT DATE RANGE LOGIC
+================================
+
+CURRENT (WRONG):
+```javascript
+// ❌ INCORRECT: Treats checkout date as inclusive
+const isBooked = bookingStartDate <= requestedDate && requestedDate <= bookingEndDate;
+```
+
+FIXED (CORRECT):
+```javascript
+// ✅ CORRECT: Checkout date is exclusive (guest leaves in morning)
+const isBooked = bookingStartDate <= requestedDate && requestedDate < bookingEndDate;
+
+// OR using moment.js for clarity:
+const conflicts = requestStart.isBefore(bookingEnd) && requestEnd.isAfter(bookingStart);
+```
+
+FIX 2: STANDARDIZE DATE HANDLING
+===============================
+
+```javascript
+const moment = require('moment');
+
+const checkRoomAvailability = async (roomId, startDate, endDate) => {
+  // Convert all dates to consistent format (start of day, local timezone)
+  const requestStart = moment(startDate).startOf('day');
+  const requestEnd = moment(endDate).startOf('day');
+  
+  // Get all bookings for this room
+  const bookings = await Booking.findAll({
+    where: { 
+      room_id: roomId,
+      status: ['confirmed', 'pending', 'checked_in'] // Only active bookings
+    }
+  });
+  
+  // Check for conflicts with each booking
+  let hasConflict = false;
+  let conflictingBooking = null;
+  
+  for (const booking of bookings) {
+    const bookingStart = moment(booking.start_date).startOf('day');
+    const bookingEnd = moment(booking.end_date).startOf('day');
+    
+    // Check if requested dates overlap with existing booking
+    // Overlap exists if: requestStart < bookingEnd AND requestEnd > bookingStart
+    const conflicts = requestStart.isBefore(bookingEnd) && requestEnd.isAfter(bookingStart);
+    
+    if (conflicts) {
+      hasConflict = true;
+      conflictingBooking = booking;
+      break;
+    }
+  }
+  
+  return {
+    is_available: !hasConflict,
+    room_status: hasConflict ? 'occupied' : 'available',
+    has_bookings: bookings.length > 0,
+    current_booking: conflictingBooking,
+    next_available_date: conflictingBooking ? 
+      moment(conflictingBooking.end_date).format('YYYY-MM-DD') : null
+  };
+};
+```
+
+FIX 3: UPDATE BOOKING CREATION VALIDATION
+=========================================
+
+The booking creation endpoint also needs the same fix:
+
+```javascript
+app.post('/api/bookings', async (req, res) => {
+  const { start_date, end_date, room_id } = req.body;
+  
+  // Use the SAME availability logic as the availability endpoint
+  const availabilityCheck = await checkRoomAvailability(room_id, start_date, end_date);
+  
+  if (!availabilityCheck.is_available) {
+    return res.status(400).json({
+      status: 'fail',
+      message: 'Room is not available for the selected dates',
+      conflicting_booking: availabilityCheck.current_booking
+    });
+  }
+  
+  // Proceed with booking creation...
+});
+```
+
+========================================================================
+DEBUG LOGGING (ADD THIS):
+========================================================================
+
+Add detailed logging to help diagnose issues:
+
+```javascript
+const checkRoomAvailability = async (roomId, startDate, endDate) => {
+  console.log('=== AVAILABILITY CHECK DEBUG ===');
+  console.log('Room ID:', roomId);
+  console.log('Requested dates:', { start: startDate, end: endDate });
+  
+  const requestStart = moment(startDate).startOf('day');
+  const requestEnd = moment(endDate).startOf('day');
+  
+  console.log('Parsed request dates:', {
+    start: requestStart.format('YYYY-MM-DD'),
+    end: requestEnd.format('YYYY-MM-DD')
+  });
+  
+  const bookings = await Booking.findAll({
+    where: { room_id: roomId, status: ['confirmed', 'pending', 'checked_in'] }
+  });
+  
+  console.log('Found bookings:', bookings.map(b => ({
+    id: b.id,
+    start: moment(b.start_date).format('YYYY-MM-DD'),
+    end: moment(b.end_date).format('YYYY-MM-DD'),
+    status: b.status
+  })));
+  
+  for (const booking of bookings) {
+    const bookingStart = moment(booking.start_date).startOf('day');
+    const bookingEnd = moment(booking.end_date).startOf('day');
+    
+    const conflicts = requestStart.isBefore(bookingEnd) && requestEnd.isAfter(bookingStart);
+    
+    console.log(`Checking booking ${booking.id}:`, {
+      bookingDates: `${bookingStart.format('YYYY-MM-DD')} to ${bookingEnd.format('YYYY-MM-DD')}`,
+      requestBeforeBookingEnd: requestStart.isBefore(bookingEnd),
+      requestAfterBookingStart: requestEnd.isAfter(bookingStart),
+      conflicts: conflicts
+    });
+    
+    if (conflicts) {
+      console.log('❌ CONFLICT FOUND!');
+      break;
+    }
+  }
+  
+  console.log('=== END DEBUG ===');
+  // ... rest of logic
+};
+```
+
+========================================================================
+TEST CASES TO VERIFY:
+========================================================================
+
+1. BASIC NON-OVERLAP TEST:
+   - Existing booking: June 5-6
+   - New request: June 7-8
+   - Expected: AVAILABLE ✅
+
+2. DIRECT ADJACENT TEST:
+   - Existing booking: June 5-6  
+   - New request: June 6-7
+   - Expected: AVAILABLE ✅ (guest checks out morning of June 6)
+
+3. OVERLAP TESTS:
+   - Existing: June 5-7, Request: June 6-8 → NOT AVAILABLE ❌
+   - Existing: June 5-7, Request: June 4-6 → NOT AVAILABLE ❌
+   - Existing: June 5-7, Request: June 3-9 → NOT AVAILABLE ❌
+
+4. SAME DAY TESTS:
+   - Existing: June 5-6, Request: June 5-6 → NOT AVAILABLE ❌
+   - Existing: June 5-6, Request: June 5-7 → NOT AVAILABLE ❌
+
+========================================================================
+SAME-DAY BOOKING INTEGRATION:
+========================================================================
+
+The same-day booking endpoint (/api/bookings/room/{id}/same-day-availability) 
+is working correctly. Make sure the regular availability endpoint uses the 
+same logic but falls back to same-day check for today's date:
+
+```javascript
+const checkRoomAvailability = async (roomId, startDate, endDate) => {
+  const today = moment().format('YYYY-MM-DD');
+  
+  // For same-day bookings, use the enhanced same-day logic
+  if (startDate === today) {
+    console.log('Using same-day availability check for today');
+    return await checkSameDayAvailability(roomId, startDate);
+  }
+  
+  // For future dates, use standard availability logic
+  return await checkStandardAvailability(roomId, startDate, endDate);
+};
+```
+
+========================================================================
+URGENT PRIORITY:
+========================================================================
+
+This bug is blocking legitimate bookings and causing poor user experience.
+Users see rooms as "available" in the same-day check but can't actually book them.
+
+Please implement these fixes IMMEDIATELY and test with the provided test cases.
+
+After fixing, verify that:
+1. June 7-8 booking works for room that was booked June 5-6
+2. Debug logs show correct date parsing and conflict detection
+3. Both availability endpoint and booking creation use same logic
+
+Contact frontend team once fixed for end-to-end testing. 

@@ -1,0 +1,63 @@
+BACKEND QUICK FIX: "Available from Jun 7" UI Bug
+
+========================================================================
+ISSUE:
+========================================================================
+Room D-01 shows "Available from Jun 7" when it should show "Available"
+Root cause: Backend returns next_available_date even when room IS available
+
+========================================================================
+MAIN FIX NEEDED:
+========================================================================
+Endpoint: GET /api/rooms/{roomId}/status
+
+CURRENT WRONG LOGIC:
+```javascript
+// ❌ Always returns next_available_date
+return {
+  is_available: true,
+  next_available_date: "2025-06-07"  // ← WRONG! Room IS available
+};
+```
+
+CORRECT LOGIC:
+```javascript
+// ✅ Only return next_available_date when there's ACTUAL conflict
+const checkRoomStatus = async (roomId) => {
+  const today = moment().format('YYYY-MM-DD');
+  const tomorrow = moment().add(1, 'day').format('YYYY-MM-DD');
+  
+  // Check if room is occupied TODAY
+  const conflict = await findConflictingBooking(roomId, today, tomorrow);
+  
+  let nextAvailableDate = null;
+  
+  if (conflict) {
+    // Only if room is occupied, find next available date
+    nextAvailableDate = moment(conflict.end_date).format('YYYY-MM-DD');
+  }
+  // If no conflict, leave nextAvailableDate as null
+  
+  return {
+    dynamic_status: conflict ? 'occupied' : 'available',
+    is_bookable: !conflict,
+    next_available_date: nextAvailableDate  // ← null if available!
+  };
+};
+```
+
+========================================================================
+EXPECTED RESULTS AFTER FIX:
+========================================================================
+✅ Room D-01: Shows "Available" (no "from" message)
+✅ Room S49-01: Still shows "Available" ✅
+❌ Occupied rooms: Show "Available from [correct date]"
+
+========================================================================
+SIMPLE TEST:
+========================================================================
+1. Apply fix above
+2. Refresh homepage 
+3. Room D-01 should show "Available" (not "Available from Jun 7")
+
+KEY PRINCIPLE: Only return next_available_date when room is ACTUALLY occupied! 

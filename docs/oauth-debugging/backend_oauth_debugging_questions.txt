@@ -1,0 +1,69 @@
+BACKEND OAUTH DEBUGGING QUESTIONS
+=====================================
+
+Based on the console logs, the user is being redirected to "/login" with no OAuth parameters, 
+which indicates the backend OAuth flow is not working correctly. Please provide the following information:
+
+1. GOOGLE OAUTH ENDPOINTS
+-------------------------
+- What is the exact URL for initiating Google OAuth? (e.g., GET /api/oauth/google)
+- What is the exact callback URL configured in the backend? (e.g., GET /api/oauth/google/callback)
+- What parameters does the initiate endpoint accept? (type=landing/admin, etc.)
+
+2. GOOGLE CONSOLE CONFIGURATION
+-------------------------------
+- What redirect URI is configured in the Google OAuth Console?
+- Is it exactly: http://localhost:5000/api/oauth/google/callback?
+- Are there any other redirect URIs configured?
+
+3. BACKEND OAUTH FLOW
+---------------------
+When a user clicks "Continue with Google":
+- Frontend redirects to: http://localhost:5000/api/oauth/google?type=landing
+- Where does the backend redirect the user after Google authentication?
+- What URL format does the backend use for success redirects?
+- What parameters does it include? (token, is_new, error, etc.)
+
+4. BACKEND LOGS
+---------------
+When testing the OAuth flow, please check backend logs for:
+- Are OAuth requests reaching the backend?
+- Any errors during Google OAuth processing?
+- What URL is the backend trying to redirect to after successful OAuth?
+- Any 404 errors or routing issues?
+
+5. BACKEND OAUTH SUCCESS RESPONSE
+----------------------------------
+After successful Google authentication, what does the backend do?
+- Does it redirect to a frontend URL with query parameters?
+- What is the exact redirect URL format? (e.g., http://localhost:3000/auth/callback?token=xxx&is_new=true)
+- Or does it redirect to /login on error?
+
+6. BACKEND ERROR HANDLING
+-------------------------
+If OAuth fails, where does the backend redirect?
+- Does it redirect to /login?
+- Does it include error parameters?
+- What triggers a redirect to /login?
+
+7. BACKEND OAUTH STATE
+----------------------
+- Is the backend properly handling OAuth state parameters?
+- Are CSRF tokens being validated correctly?
+- Any session/cookie issues?
+
+8. QUICK TEST REQUEST
+--------------------
+Can you test this exact flow and share the logs:
+1. Visit: http://localhost:5000/api/oauth/google?type=landing
+2. Complete Google OAuth
+3. Check what URL you end up on
+4. Share backend logs from this test
+
+CURRENT ISSUE SUMMARY:
+- User clicks "Continue with Google" 
+- Gets redirected somewhere in the OAuth flow
+- Ends up on http://localhost:3000/login with no parameters
+- No token, no error, no OAuth data - just a clean /login page
+
+This suggests the backend is redirecting to /login instead of a proper callback URL with OAuth parameters. 

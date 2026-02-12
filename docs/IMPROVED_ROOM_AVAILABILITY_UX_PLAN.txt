@@ -1,0 +1,348 @@
+IMPROVED ROOM AVAILABILITY UX PLAN
+=====================================
+
+USER'S BRILLIANT IDEA:
+- Remove confusing "Available from Jun 7" text
+- Simplify room cards to "Available now" vs "Occupied today" 
+- Add "Book for other dates" button → opens enhanced date picker
+- Date picker highlights booked periods visually
+
+========================================================================
+1. ROOM CARD SIMPLIFICATION
+========================================================================
+
+CURRENT CONFUSING CARDS:
+❌ "Available from Jun 7" (when room IS available)
+❌ "Book from Jun 7" (confusing button)
+
+NEW SIMPLIFIED CARDS:
+✅ "Available now" → [Book Now] (green button)
+❌ "Occupied today" → [Book for other dates] (blue button)
+🔍 Always available → [Check Availability] (neutral button)
+
+ROOM CARD LOGIC (Frontend):
+```jsx
+const RoomCard = ({ room }) => {
+  const today = moment().format('YYYY-MM-DD');
+  const isAvailableToday = room.dynamic_status === 'available';
+  
+  return (
+    <div className="room-card">
+      {/* Room details... */}
+      
+      {isAvailableToday ? (
+        <>
+          <div className="status-badge available">
+            ✅ Available now
+          </div>
+          <button className="btn-book-now" onClick={() => bookNow(room.id)}>
+            Book Now
+          </button>
+        </>
+      ) : (
+        <>
+          <div className="status-badge occupied">
+            ❌ Occupied today
+          </div>
+          <button className="btn-check-dates" onClick={() => openDatePicker(room.id)}>
+            Book for other dates
+          </button>
+        </>
+      )}
+    </div>
+  );
+};
+```
+
+========================================================================
+2. ENHANCED DATE PICKER IMPLEMENTATION
+========================================================================
+
+NEW BACKEND ENDPOINT NEEDED:
+```
+GET /api/rooms/{roomId}/blocked-periods
+Response: {
+  "blocked_periods": [
+    {
+      "start_date": "2025-06-05",
+      "end_date": "2025-06-06",
+      "reason": "Booking #12345",
+      "guest_name": "John Doe"
+    },
+    {
+      "start_date": "2025-06-09", 
+      "end_date": "2025-06-10",
+      "reason": "Booking #12346",
+      "guest_name": "Jane Smith"
+    }
+  ],
+  "available_periods": [
+    {
+      "start_date": "2025-06-07",
+      "end_date": "2025-06-08", 
+      "duration_days": 2
+    },
+    {
+      "start_date": "2025-06-11",
+      "end_date": "2025-06-30",
+      "duration_days": 20
+    }
+  ]
+}
+```
+
+ENHANCED DATE PICKER COMPONENT:
+```jsx
+const EnhancedDatePicker = ({ roomId, onBooking }) => {
+  const [blockedPeriods, setBlockedPeriods] = useState([]);
+  const [selectedDates, setSelectedDates] = useState(null);
+  const [suggestedDates, setSuggestedDates] = useState([]);
+  
+  useEffect(() => {
+    // Load blocked periods
+    fetchBlockedPeriods(roomId);
+    // Generate suggested available periods
+    generateSuggestions();
+  }, [roomId]);
+  
+  return (
+    <div className="enhanced-date-picker">
+      
+      {/* Quick Suggestions */}
+      <div className="date-suggestions">
+        <h4>🚀 Quick Options:</h4>
+        {suggestedDates.map(period => (
+          <button 
+            key={period.id}
+            className="suggestion-chip"
+            onClick={() => selectSuggestion(period)}
+          >
+            {period.label} ({period.duration} nights)
+          </button>
+        ))}
+      </div>
+      
+      {/* Visual Calendar */}
+      <div className="visual-calendar">
+        <Calendar
+          selectRange={true}
+          onChange={setSelectedDates}
+          tileClassName={({ date }) => {
+            if (isDateBlocked(date, blockedPeriods)) {
+              return 'blocked-date';
+            }
+            if (isDateInAvailablePeriod(date)) {
+              return 'available-date';  
+            }
+            return '';
+          }}
+          tileDisabled={({ date }) => isDateBlocked(date, blockedPeriods)}
+        />
+      </div>
+      
+      {/* Blocked Periods Legend */}
+      <div className="calendar-legend">
+        <div className="legend-item">
+          <span className="blocked-indicator"></span>
+          Unavailable (booked)
+        </div>
+        <div className="legend-item">
+          <span className="available-indicator"></span>
+          Available for booking
+        </div>
+      </div>
+      
+      {/* Selection Summary */}
+      {selectedDates && (
+        <div className="selection-summary">
+          <h4>📅 Your Selection:</h4>
+          <p>{formatDateRange(selectedDates)} ({calculateNights(selectedDates)} nights)</p>
+          <p className="price-estimate">Estimated: Rp {calculatePrice(selectedDates)}</p>
+          <button className="btn-confirm" onClick={() => proceedToBooking(selectedDates)}>
+            Proceed to Booking →
+          </button>
+        </div>
+      )}
+      
+    </div>
+  );
+};
+```
+
+========================================================================
+3. VISUAL ENHANCEMENTS
+========================================================================
+
+CSS FOR CALENDAR:
+```css
+/* Blocked dates - red/gray */
+.blocked-date {
+  background-color: #ffebee !important;
+  color: #c62828 !important;
+  text-decoration: line-through;
+  cursor: not-allowed;
+}
+
+/* Available dates - light green */
+.available-date {
+  background-color: #e8f5e8 !important;
+  color: #2e7d32 !important;
+}
+
+/* Selected range - blue */
+.react-calendar__tile--range {
+  background-color: #1976d2 !important;
+  color: white !important;
+}
+
+/* Suggestion chips */
+.suggestion-chip {
+  background: linear-gradient(45deg, #2196F3, #21CBF3);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 20px;
+  margin: 4px;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.suggestion-chip:hover {
+  transform: scale(1.05);
+}
+```
+
+========================================================================
+4. SMART SUGGESTIONS LOGIC
+========================================================================
+
+```javascript
+const generateSuggestions = (blockedPeriods) => {
+  const suggestions = [];
+  const today = moment();
+  
+  // Find next 3 available periods
+  let currentDate = today.clone();
+  let foundPeriods = 0;
+  
+  while (foundPeriods < 3 && currentDate.diff(today, 'days') < 90) {
+    const availablePeriod = findNextAvailablePeriod(currentDate, blockedPeriods);
+    
+    if (availablePeriod && availablePeriod.duration >= 1) {
+      suggestions.push({
+        id: foundPeriods,
+        label: `${availablePeriod.start.format('MMM DD')} - ${availablePeriod.end.format('MMM DD')}`,
+        start_date: availablePeriod.start.format('YYYY-MM-DD'),
+        end_date: availablePeriod.end.format('YYYY-MM-DD'), 
+        duration: availablePeriod.duration,
+        reason: foundPeriods === 0 ? 'Soonest available' : 
+                foundPeriods === 1 ? 'Weekend option' : 'Longer stay'
+      });
+      foundPeriods++;
+    }
+    
+    currentDate = availablePeriod ? availablePeriod.end.clone().add(1, 'day') : currentDate.add(1, 'day');
+  }
+  
+  return suggestions;
+};
+```
+
+========================================================================
+5. BACKEND CHANGES NEEDED
+========================================================================
+
+SIMPLIFIED ROOM STATUS ENDPOINT:
+```javascript
+// GET /api/rooms/{roomId}/status - SIMPLIFIED!
+app.get('/api/rooms/:roomId/status', async (req, res) => {
+  const today = moment().format('YYYY-MM-DD');
+  const tomorrow = moment().add(1, 'day').format('YYYY-MM-DD');
+  
+  const isOccupiedToday = await checkIfOccupied(roomId, today, tomorrow);
+  
+  res.json({
+    status: 'success',
+    data: {
+      dynamic_status: isOccupiedToday ? 'occupied' : 'available',
+      is_bookable: !isOccupiedToday,
+      // ✅ NO MORE next_available_date confusion!
+    }
+  });
+});
+```
+
+NEW BLOCKED PERIODS ENDPOINT:
+```javascript
+// GET /api/rooms/{roomId}/blocked-periods - NEW!
+app.get('/api/rooms/:roomId/blocked-periods', async (req, res) => {
+  const { roomId } = req.params;
+  const { start_date, end_date } = req.query; // Optional date range
+  
+  const bookings = await Booking.findAll({
+    where: { 
+      room_id: roomId,
+      status: ['confirmed', 'pending', 'checked_in'],
+      start_date: { [Op.gte]: start_date || moment().format('YYYY-MM-DD') },
+      end_date: { [Op.lte]: end_date || moment().add(90, 'days').format('YYYY-MM-DD') }
+    }
+  });
+  
+  const blockedPeriods = bookings.map(booking => ({
+    start_date: booking.start_date,
+    end_date: booking.end_date,
+    reason: `Booking #${booking.id}`,
+    guest_name: booking.guest_name || 'Reserved'
+  }));
+  
+  res.json({
+    status: 'success', 
+    data: {
+      blocked_periods: blockedPeriods,
+      total_periods: blockedPeriods.length
+    }
+  });
+});
+```
+
+========================================================================
+6. IMPLEMENTATION PRIORITY
+========================================================================
+
+PHASE 1 (Quick Win - 2 hours):
+✅ Simplify room cards (remove next_available_date logic)
+✅ Add "Book for other dates" button
+✅ Basic date picker integration
+
+PHASE 2 (Enhanced UX - 4 hours):
+✅ Visual calendar with blocked dates
+✅ Backend blocked-periods endpoint  
+✅ Smart date suggestions
+
+PHASE 3 (Polish - 2 hours):
+✅ Beautiful CSS styling
+✅ Animation and transitions
+✅ Mobile responsiveness
+
+========================================================================
+BENEFITS OF THIS APPROACH:
+========================================================================
+
+✅ No more confusing "Available from Jun 7" bugs
+✅ Users have full control over date selection
+✅ Visual feedback shows exactly what's available
+✅ Simpler backend logic (no complex next_available_date)
+✅ Better mobile experience 
+✅ Scalable for future features (price calendar, length-of-stay discounts)
+
+========================================================================
+IMMEDIATE NEXT STEPS:
+========================================================================
+
+1. Update room card components (remove next_available_date display)
+2. Add "Book for other dates" button functionality  
+3. Create enhanced date picker component
+4. Implement blocked-periods backend endpoint
+5. Add visual styling for calendar
+
+This approach is MUCH better than fixing the buggy next_available_date logic! 

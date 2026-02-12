@@ -1,0 +1,23 @@
+{
+  "name": "Untung Jawa Island",
+  "short_name": "Untung Jawa",
+  "description": "Discover Jakarta's Island Paradise - Experience authentic homestays, pristine beaches, and local culture",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "16x16 32x32",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "/untung.jpeg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+} 

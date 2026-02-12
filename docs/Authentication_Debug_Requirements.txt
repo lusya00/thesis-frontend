@@ -1,0 +1,181 @@
+AUTHENTICATION DEBUG REQUIREMENTS - BACKEND
+=============================================
+
+ISSUE: Frontend shows user as logged in, but backend returns 401 Unauthorized for booking creation
+
+FRONTEND BEHAVIOR:
+- User appears logged in in UI (shows user profile, "Tashinga" name visible)
+- JWT token exists in localStorage ('jwt_token')
+- Frontend sends Authorization: Bearer {token} header
+- Backend responds with 401 Unauthorized for POST /api/bookings
+
+BACKEND DEBUGGING NEEDED:
+=========================
+
+1. JWT TOKEN VALIDATION
+   Check these in your backend authentication middleware:
+   
+   a) TOKEN EXTRACTION:
+      - Is the Authorization header being read correctly?
+      - Is "Bearer " prefix being stripped properly?
+      - Log the exact token received: console.log('Received token:', token)
+   
+   b) TOKEN VERIFICATION:
+      - Is JWT signature validation working?
+      - Is the token expired? Check exp claim
+      - Is the secret key correct for verification?
+      - Log verification errors: console.log('JWT verification error:', error)
+   
+   c) USER LOOKUP:
+      - After token verification, is user being found in database?
+      - Check if user_id from token exists in users table
+      - Log user lookup: console.log('Found user:', user)
+
+2. MIDDLEWARE SETUP
+   Verify your authentication middleware for /api/bookings endpoint:
+   
+   a) ROUTE PROTECTION:
+      - Is /api/bookings protected by auth middleware?
+      - Should it be? (guest bookings vs authenticated bookings)
+      - Are you using different endpoints for guest vs auth bookings?
+   
+   b) MIDDLEWARE ORDER:
+      - Is auth middleware running before route handlers?
+      - Are there any middleware conflicts?
+
+3. ENDPOINT CONFIGURATION
+   Check your booking endpoints:
+   
+   Current Frontend Expectation:
+   - POST /api/bookings (for authenticated users)
+   - POST /api/bookings/guest (for guest users)
+   
+   Questions:
+   - Do both endpoints exist?
+   - Which one requires authentication?
+   - Is the frontend calling the correct endpoint?
+
+4. TOKEN DETAILS TO CHECK
+   Please provide these from your backend logs:
+   
+   a) RECEIVED REQUEST:
+      ```
+      Headers: {
+        Authorization: "Bearer [first 20 chars]...",
+        Content-Type: "application/json"
+      }
+      ```
+   
+   b) TOKEN VALIDATION:
+      ```
+      Token received: [yes/no]
+      Token format valid: [yes/no]
+      JWT verification: [success/failure]
+      Error message: [if any]
+      ```
+   
+   c) USER LOOKUP:
+      ```
+      User ID from token: [number]
+      User found in DB: [yes/no]
+      User status: [active/inactive/etc]
+      ```
+
+5. EXPECTED BACKEND BEHAVIOR
+   For authenticated booking, your backend should:
+   
+   Step 1: Extract token from Authorization header
+   Step 2: Verify JWT signature and expiration
+   Step 3: Extract user_id from token payload
+   Step 4: Look up user in database
+   Step 5: Attach user to request object
+   Step 6: Process booking with user context
+
+6. DEBUGGING CODE TO ADD
+   Add these logs to your auth middleware:
+   
+   ```javascript
+   // At start of auth middleware
+   console.log('Auth middleware triggered for:', req.path);
+   console.log('Authorization header:', req.headers.authorization ? 'Present' : 'Missing');
+   
+   // After token extraction
+   console.log('Extracted token (first 20 chars):', token ? token.substring(0, 20) + '...' : 'None');
+   
+   // After JWT verification
+   console.log('JWT verification result:', decoded ? 'Success' : 'Failed');
+   if (decoded) console.log('Token payload:', decoded);
+   
+   // After user lookup
+   console.log('User lookup result:', user ? `Found user ${user.id}` : 'User not found');
+   
+   // Before proceeding
+   console.log('Auth middleware result:', req.user ? 'Authenticated' : 'Not authenticated');
+   ```
+
+7. POSSIBLE ISSUES TO CHECK
+   
+   a) TOKEN EXPIRATION:
+      - Check if JWT exp claim is in the past
+      - Frontend might have old/expired token
+   
+   b) SECRET KEY MISMATCH:
+      - Verify JWT_SECRET in environment variables
+      - Token might be signed with different secret
+   
+   c) TOKEN FORMAT:
+      - Check if token has proper JWT structure (xxx.yyy.zzz)
+      - Verify base64 encoding is correct
+   
+   d) DATABASE CONNECTION:
+      - User lookup might be failing due to DB issues
+      - Check if user still exists in database
+   
+   e) MIDDLEWARE CONFIGURATION:
+      - Auth middleware might not be applied to /api/bookings
+      - Route might be expecting different auth method
+
+8. FRONTEND TOKEN DETAILS
+   The frontend is sending:
+   - Token from: localStorage.getItem('jwt_token')
+   - Header format: "Authorization: Bearer {token}"
+   - Endpoint: POST /api/bookings
+   - With booking data including guest info
+
+9. QUICK TESTS TO PERFORM
+   
+   a) Test token manually:
+      - Copy token from browser localStorage
+      - Use jwt.io to decode and verify
+      - Check expiration date
+   
+   b) Test endpoint without auth:
+      - Temporarily disable auth middleware
+      - See if booking creation works
+      - This isolates the auth issue
+   
+   c) Test with fresh login:
+      - Have user logout and login again
+      - Try booking with new token
+      - Check if issue persists
+
+10. RESPONSE NEEDED
+    Please provide:
+    
+    a) Backend logs when the 401 error occurs
+    b) JWT token validation logs (with debugging added)
+    c) User lookup results
+    d) Middleware configuration for /api/bookings
+    e) Any error messages from JWT verification
+    
+    Format:
+    ```
+    Request: POST /api/bookings
+    Headers: Authorization: Bearer [present/missing]
+    Auth middleware: [triggered/not triggered]
+    Token validation: [success/failed - reason]
+    User lookup: [found/not found]
+    Final result: 401 Unauthorized - [specific reason]
+    ```
+
+This will help identify exactly where the authentication is failing in your backend chain. 

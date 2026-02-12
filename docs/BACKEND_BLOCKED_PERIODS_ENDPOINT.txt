@@ -1,0 +1,257 @@
+BACKEND ENDPOINT: Room Blocked Periods for Enhanced Date Picker
+========================================================================
+
+ENDPOINT: GET /api/rooms/{roomId}/blocked-periods
+PURPOSE: Provide blocked booking periods for visual calendar display
+
+========================================================================
+ROUTE DEFINITION:
+========================================================================
+
+```javascript
+// GET /api/rooms/:roomId/blocked-periods
+app.get('/api/rooms/:roomId/blocked-periods', async (req, res) => {
+  const { roomId } = req.params;
+  const { start_date, end_date } = req.query;
+  
+  try {
+    // Default date range: today to 3 months ahead
+    const startDate = start_date || moment().format('YYYY-MM-DD');
+    const endDate = end_date || moment().add(90, 'days').format('YYYY-MM-DD');
+    
+    // Get all confirmed bookings for this room in the date range
+    const bookings = await Booking.findAll({
+      where: { 
+        room_id: roomId,
+        status: ['confirmed', 'pending', 'checked_in'],
+        [Op.or]: [
+          {
+            start_date: {
+              [Op.between]: [startDate, endDate]
+            }
+          },
+          {
+            end_date: {
+              [Op.between]: [startDate, endDate]
+            }
+          },
+          {
+            [Op.and]: [
+              { start_date: { [Op.lte]: startDate } },
+              { end_date: { [Op.gte]: endDate } }
+            ]
+          }
+        ]
+      },
+      include: [
+        {
+          model: User,
+          attributes: ['name'],
+          required: false
+        }
+      ],
+      order: [['start_date', 'ASC']]
+    });
+    
+    // Format blocked periods for frontend
+    const blockedPeriods = bookings.map(booking => ({
+      start_date: booking.start_date,
+      end_date: booking.end_date,
+      reason: `Booking #${booking.id}`,
+      guest_name: booking.User?.name || 'Reserved',
+      booking_id: booking.id
+    }));
+    
+    res.json({
+      status: 'success',
+      data: {
+        room_id: parseInt(roomId),
+        date_range: {
+          start_date: startDate,
+          end_date: endDate
+        },
+        blocked_periods: blockedPeriods,
+        total_blocked_periods: blockedPeriods.length
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error fetching blocked periods:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to fetch room blocked periods'
+    });
+  }
+});
+```
+
+========================================================================
+REQUEST PARAMETERS:
+========================================================================
+
+PATH PARAMETERS:
+- roomId (required): The ID of the room to check
+
+QUERY PARAMETERS:
+- start_date (optional): Start date for the range (YYYY-MM-DD format)
+  Default: Today's date
+- end_date (optional): End date for the range (YYYY-MM-DD format)
+  Default: 90 days from today
+
+EXAMPLE REQUEST:
+```
+GET /api/rooms/49/blocked-periods?start_date=2025-06-01&end_date=2025-09-01
+```
+
+========================================================================
+RESPONSE FORMAT:
+========================================================================
+
+SUCCESS RESPONSE (200):
+```json
+{
+  "status": "success",
+  "data": {
+    "room_id": 49,
+    "date_range": {
+      "start_date": "2025-06-01",
+      "end_date": "2025-09-01"
+    },
+    "blocked_periods": [
+      {
+        "start_date": "2025-06-05",
+        "end_date": "2025-06-06",
+        "reason": "Booking #12345",
+        "guest_name": "John Doe",
+        "booking_id": 12345
+      },
+      {
+        "start_date": "2025-06-09",
+        "end_date": "2025-06-10",
+        "reason": "Booking #12346",
+        "guest_name": "Jane Smith",
+        "booking_id": 12346
+      },
+      {
+        "start_date": "2025-06-15",
+        "end_date": "2025-06-18",
+        "reason": "Booking #12347",
+        "guest_name": "Bob Wilson",
+        "booking_id": 12347
+      }
+    ],
+    "total_blocked_periods": 3
+  }
+}
+```
+
+ERROR RESPONSE (404):
+```json
+{
+  "status": "error",
+  "message": "Room not found"
+}
+```
+
+ERROR RESPONSE (500):
+```json
+{
+  "status": "error",
+  "message": "Failed to fetch room blocked periods"
+}
+```
+
+========================================================================
+DATABASE REQUIREMENTS:
+========================================================================
+
+TABLES NEEDED:
+- bookings (with room_id, start_date, end_date, status)
+- users (for guest names)
+- rooms (to validate room exists)
+
+INDEXES RECOMMENDED:
+```sql
+-- For performance
+CREATE INDEX idx_bookings_room_dates ON bookings(room_id, start_date, end_date);
+CREATE INDEX idx_bookings_status ON bookings(status);
+```
+
+========================================================================
+FRONTEND INTEGRATION:
+========================================================================
+
+The enhanced date picker component will call this endpoint like this:
+
+```javascript
+// In EnhancedDatePicker component
+const fetchBlockedPeriods = async () => {
+  try {
+    const response = await fetch(`/api/rooms/${roomId}/blocked-periods?start_date=${startDate}&end_date=${endDate}`);
+    const data = await response.json();
+    
+    if (data.status === 'success') {
+      setBlockedPeriods(data.data.blocked_periods);
+    }
+  } catch (error) {
+    console.error('Failed to fetch blocked periods:', error);
+  }
+};
+```
+
+========================================================================
+SECURITY CONSIDERATIONS:
+========================================================================
+
+1. RATE LIMITING: Limit requests per user/IP to prevent abuse
+2. INPUT VALIDATION: Validate date formats and room ID
+3. PRIVACY: Don't expose sensitive guest information
+4. AUTHORIZATION: Consider if this endpoint needs authentication
+
+EXAMPLE VALIDATION:
+```javascript
+// Validate room ID
+if (!roomId || isNaN(parseInt(roomId))) {
+  return res.status(400).json({
+    status: 'error',
+    message: 'Invalid room ID'
+  });
+}
+
+// Validate date format
+const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+if (start_date && !dateRegex.test(start_date)) {
+  return res.status(400).json({
+    status: 'error',
+    message: 'Invalid start_date format. Use YYYY-MM-DD'
+  });
+}
+```
+
+========================================================================
+TESTING ENDPOINTS:
+========================================================================
+
+TEST CASES:
+1. GET /api/rooms/49/blocked-periods (default date range)
+2. GET /api/rooms/49/blocked-periods?start_date=2025-06-01&end_date=2025-06-30
+3. GET /api/rooms/999/blocked-periods (non-existent room)
+4. GET /api/rooms/49/blocked-periods?start_date=invalid (invalid date)
+
+EXPECTED BEHAVIORS:
+- ✅ Return blocked periods for valid room and date range
+- ✅ Return empty array if no bookings in date range  
+- ❌ Return 404 for non-existent room
+- ❌ Return 400 for invalid date format
+
+========================================================================
+PRIORITY: HIGH
+========================================================================
+
+This endpoint is required for Phase 2 functionality. The enhanced date picker will:
+1. Call this endpoint when component loads
+2. Display blocked periods visually in red on calendar
+3. Prevent users from selecting blocked dates
+4. Show booking information for blocked periods
+
+Once implemented, the visual calendar will show exactly which dates are unavailable and why! 

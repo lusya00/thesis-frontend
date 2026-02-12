@@ -1,0 +1,125 @@
+PAYMENT STATUS UPDATE ENDPOINT REQUIREMENTS - BACKEND
+=====================================================
+
+ISSUE: User dashboard shows payment status as "pending" even after successful payment completion
+
+ROOT CAUSE: Frontend updates booking_status to 'confirmed' but payment_status remains 'pending'
+
+REQUIRED BACKEND ENDPOINTS:
+==========================
+
+1. PAYMENT STATUS UPDATE ENDPOINT (PRIORITY 1)
+   
+   Endpoint: PUT /api/bookings/{id}/payment-status
+   
+   Request Body:
+   ```json
+   {
+     "payment_status": "paid" | "completed" | "failed" | "pending"
+   }
+   ```
+   
+   Response:
+   ```json
+   {
+     "status": "success",
+     "data": {
+       "id": 123,
+       "payment_status": "paid",
+       "updated_at": "2025-01-16T10:30:00Z"
+     }
+   }
+   ```
+   
+   Authentication: Required (Bearer token)
+   
+   Purpose: Updates only the payment_status field of a booking
+
+2. COMBINED BOOKING UPDATE ENDPOINT (ALTERNATIVE)
+   
+   Endpoint: PUT /api/bookings/{id}
+   
+   Request Body:
+   ```json
+   {
+     "booking_status": "confirmed",
+     "payment_status": "paid"
+   }
+   ```
+   
+   Response:
+   ```json
+   {
+     "status": "success", 
+     "data": {
+       "id": 123,
+       "booking_status": "confirmed",
+       "payment_status": "paid",
+       "updated_at": "2025-01-16T10:30:00Z"
+     }
+   }
+   ```
+   
+   Purpose: Updates multiple booking fields in one call
+
+3. CURRENT FRONTEND FLOW:
+   
+   When payment is successful, frontend needs to:
+   1. Update booking_status: 'pending' → 'confirmed' ✅ (working)
+   2. Update payment_status: 'pending' → 'paid' ❌ (missing)
+   
+   Current Code:
+   ```javascript
+   // This works (updates booking_status only)
+   await bookingService.updateBookingStatus(bookingId, {
+     status: 'confirmed'
+   });
+   
+   // This fails (no endpoint exists)
+   await apiClient.put(`/bookings/${bookingId}/payment-status`, {
+     payment_status: 'paid'
+   });
+   ```
+
+4. DATABASE REQUIREMENTS:
+   
+   Booking table should have both fields:
+   - booking_status: 'pending' | 'confirmed' | 'cancelled' | 'completed'
+   - payment_status: 'pending' | 'paid' | 'failed' | 'cancelled'
+   
+   Both fields should be updated when payment is completed.
+
+5. FRONTEND EXPECTATIONS:
+   
+   User Dashboard reads: booking.payment_status
+   Expected values after payment:
+   - Before payment: "pending"
+   - After successful payment: "paid" or "completed"
+   - After failed payment: "failed"
+
+6. TESTING:
+   
+   To test the fix:
+   1. Create a booking (should show payment_status: "pending")
+   2. Complete QRIS payment
+   3. Check user dashboard
+   4. Should show payment_status: "paid" (not "pending")
+
+7. CURRENT WORKAROUND:
+   
+   Frontend attempts multiple API calls:
+   1. PUT /api/bookings/{id}/payment-status (preferred)
+   2. PUT /api/bookings/{id} with both fields (fallback)
+   
+   At least one of these should work for proper payment status updates.
+
+8. RELATED ENDPOINTS TO VERIFY:
+   
+   These should return payment_status field:
+   - GET /api/bookings/my (user bookings)
+   - GET /api/bookings/{id} (single booking)
+   - GET /api/bookings (admin bookings)
+   
+   Make sure payment_status is included in all booking responses.
+
+PRIORITY: HIGH (affects user experience after payment completion) 

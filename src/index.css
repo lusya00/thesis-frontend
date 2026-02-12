@@ -1,0 +1,298 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base styles */
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  overflow-x: hidden;
+}
+
+/* Custom CSS for phone input emoji flags */
+.emoji-flag {
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Android Emoji", "EmojiSymbols", sans-serif;
+  text-rendering: optimizeQuality;
+  font-variant-emoji: emoji;
+  /* Fallback for browsers that don't support emoji properly */
+  font-feature-settings: "liga" 1, "kern" 1;
+}
+
+/* Ensure phone input flags display properly */
+[data-phone-input] .emoji-flag {
+  display: inline-block;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 240 9% 9%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 10% 3.9%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --radius: 0.5rem;
+    
+    /* Custom color variables */
+    --ocean: 202 91% 40%;
+    --ocean-light: 202 91% 55%;
+    --ocean-dark: 202 91% 25%;
+    --sand: 48 89% 70%;
+    --sand-light: 48 89% 85%;
+    --sand-dark: 48 89% 55%;
+    --tropical: 190 100% 42%;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 5.9% 10%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer components {
+  .hero-slide {
+    @apply h-full w-full object-cover transition-opacity duration-1000;
+  }
+  
+  .section-heading {
+    @apply text-4xl md:text-5xl font-bold text-ocean-dark mb-4 relative font-playfair;
+  }
+  
+  .section-heading::after {
+    @apply content-[''] absolute bottom-0 left-0 w-20 h-1 bg-ocean mt-1;
+  }
+
+  .floating-card {
+    @apply bg-white shadow-lg rounded-2xl p-6 hover:shadow-xl transition-all duration-500;
+    animation: float 6s ease-in-out infinite;
+  }
+  
+  .btn-primary {
+    @apply bg-gradient-to-r from-ocean to-ocean-dark text-white px-6 py-3 rounded-full transition-all duration-300 
+           inline-flex items-center justify-center font-medium shadow-md hover:shadow-lg hover:scale-105;
+  }
+  
+  .btn-secondary {
+    @apply bg-white/90 backdrop-blur-sm text-ocean-dark px-6 py-3 rounded-full border border-sand transition-all duration-300
+           inline-flex items-center justify-center font-medium shadow-sm hover:shadow-md hover:bg-sand-light hover:scale-105;
+  }
+}
+
+@layer utilities {
+  .animate-delay-300 {
+    animation-delay: 300ms;
+  }
+  
+  .animate-delay-600 {
+    animation-delay: 600ms;
+  }
+  
+  .animate-delay-900 {
+    animation-delay: 900ms;
+  }
+
+  /* Enhanced text shadow utilities for better visibility */
+  .text-shadow-dark {
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+  
+  .text-shadow-light {
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8), 0 0 1px rgba(255, 255, 255, 0.9);
+  }
+  
+  .text-shadow-soft {
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Better icon shadows for visibility on all backgrounds */
+  .icon-shadow-dark {
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+  }
+  
+  .icon-shadow-light {
+    filter: drop-shadow(0 1px 2px rgba(255, 255, 255, 0.9));
+  }
+
+  /* Improved contrast backgrounds */
+  .bg-contrast-light {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(8px);
+  }
+  
+  .bg-contrast-dark {
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+  }
+
+  /* Mobile-first container padding */
+  .container-padding {
+    @apply px-4 sm:px-6 md:px-8 lg:px-12 xl:px-16;
+  }
+  
+  /* Responsive text sizes */
+  .text-responsive-xs { @apply text-sm sm:text-base; }
+  .text-responsive-sm { @apply text-base sm:text-lg; }
+  .text-responsive-md { @apply text-lg sm:text-xl md:text-2xl; }
+  .text-responsive-lg { @apply text-xl sm:text-2xl md:text-3xl lg:text-4xl; }
+  .text-responsive-xl { @apply text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl; }
+  
+  /* Responsive grid gaps */
+  .gap-responsive { @apply gap-3 sm:gap-4 md:gap-6 lg:gap-8; }
+  .gap-responsive-sm { @apply gap-2 sm:gap-3 md:gap-4; }
+  .gap-responsive-lg { @apply gap-4 sm:gap-6 md:gap-8 lg:gap-10 xl:gap-12; }
+  
+  /* Enhanced mobile padding/margin */
+  .section-padding { @apply py-8 sm:py-12 md:py-16 lg:py-20 xl:py-24; }
+  .section-margin { @apply my-8 sm:my-12 md:my-16 lg:py-20; }
+  
+  /* Touch-friendly button sizes */
+  .btn-touch { @apply min-h-[44px] min-w-[44px] px-4 py-2 sm:px-6 sm:py-3; }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slideDown {
+  animation: slideDown 0.3s ease-out forwards;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.5s ease-out forwards;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Fallback visibility for critical content in case JS fails */
+.motion-safe-fallback {
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+/* Ensure main content areas are always visible */
+main, section, .container {
+  min-height: auto;
+  opacity: 1;
+}
+
+/* Fix potential overflow issues */
+.overflow-hidden {
+  overflow-x: hidden;
+  overflow-y: visible;
+}
+
+/* Ensure z-index layering doesn't hide content */
+.relative {
+  z-index: auto;
+}
+
+/* Remove scrollbar for slider */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Transition duration enhancements */
+.duration-1500 {
+  transition-duration: 1500ms;
+}

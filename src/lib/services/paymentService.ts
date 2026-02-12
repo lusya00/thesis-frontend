@@ -1,0 +1,1 @@
+// This file is now deprecated. All payment logic is removed. Payment is handled manually via WhatsApp. 

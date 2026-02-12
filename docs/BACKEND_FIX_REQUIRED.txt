@@ -1,0 +1,95 @@
+BACKEND FIX REQUIRED - Profile Update Phone Number Validation Bug
+================================================================
+
+ISSUE DESCRIPTION:
+The PUT /api/profile/profile endpoint has a validation bug. When a user updates 
+their profile, it incorrectly validates phone number uniqueness against ALL users, 
+including the current user themselves.
+
+ERROR MESSAGE:
+"Phone number is already registered to another account"
+
+REPRODUCTION:
+1. User tries to update their name (e.g., "John" to "John Smith")
+2. Backend validates phone number uniqueness
+3. Finds the phone number belongs to the current user
+4. Incorrectly returns error saying phone is "already registered to another account"
+
+CURRENT BACKEND LOGIC (BUGGY):
+==============================
+// This checks if phone exists in ANY account
+SELECT * FROM users WHERE phone_number = ?
+// Returns error even when phone belongs to current user
+
+REQUIRED FIX:
+=============
+// Should exclude the current user from uniqueness check
+SELECT * FROM users WHERE phone_number = ? AND id != current_user_id
+
+BACKEND IMPLEMENTATION OPTIONS:
+===============================
+
+OPTION 1: Exclude Current User from Check
+------------------------------------------
+// BEFORE (buggy)
+const existingUser = await User.findOne({ phone_number: req.body.phone_number });
+if (existingUser) {
+    return res.status(400).json({
+        status: 'fail',
+        message: 'Phone number is already registered to another account'
+    });
+}
+
+// AFTER (fixed)
+const existingUser = await User.findOne({ 
+    phone_number: req.body.phone_number,
+    id: { $ne: req.user.id } // Exclude current user
+});
+if (existingUser) {
+    return res.status(400).json({
+        status: 'fail', 
+        message: 'Phone number is already registered to another account'
+    });
+}
+
+OPTION 2: Skip Validation if Phone Unchanged
+---------------------------------------------
+const currentUser = await User.findById(req.user.id);
+if (currentUser.phone_number !== req.body.phone_number) {
+    // Only validate if phone number is actually changing
+    const existingUser = await User.findOne({ phone_number: req.body.phone_number });
+    if (existingUser) {
+        return res.status(400).json({
+            status: 'fail',
+            message: 'Phone number is already registered to another account'
+        });
+    }
+}
+
+OPTION 3: SQL Database Query
+-----------------------------
+// For SQL databases
+const existingUser = await db.query(
+    'SELECT * FROM users WHERE phone_number = ? AND id != ?',
+    [req.body.phone_number, req.user.id]
+);
+
+EXPECTED BEHAVIOR AFTER FIX:
+============================
+✅ User can update their name without phone number validation error
+✅ User can update any field without affecting their own phone number
+✅ Phone number uniqueness still enforced for OTHER users
+✅ Proper validation when user actually changes their phone number
+
+TESTING:
+========
+1. User updates name only - should succeed
+2. User updates phone to existing number (different user) - should fail
+3. User updates phone to new unique number - should succeed
+4. User updates multiple fields including unchanged phone - should succeed
+
+PRIORITY: HIGH
+This affects basic profile editing functionality.
+
+ENDPOINT: PUT /api/profile/profile
+STATUS: Needs immediate fix in backend validation logic 

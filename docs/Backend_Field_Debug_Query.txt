@@ -1,0 +1,115 @@
+BACKEND FIELD DEBUGGING - DATABASE QUERIES
+==========================================
+
+ISSUE: Frontend shows "pending" but database has is_paid=true and payments.status=completed
+
+PLEASE RUN THESE QUERIES TO DEBUG THE FIELD MAPPING:
+
+1. CHECK BOOKING TABLE STRUCTURE:
+   ```sql
+   DESCRIBE bookings;
+   -- OR
+   SHOW COLUMNS FROM bookings;
+   ```
+   
+   Look for these fields:
+   - payment_status (string field)
+   - is_paid (boolean field)
+   - booking_status (string field)
+   - status (string field)
+
+2. CHECK ACTUAL BOOKING DATA:
+   ```sql
+   SELECT 
+     id, 
+     booking_number,
+     booking_status,
+     payment_status,
+     is_paid,
+     status,
+     payment_method,
+     created_at
+   FROM bookings 
+   WHERE is_paid = true 
+   ORDER BY created_at DESC 
+   LIMIT 5;
+   ```
+
+3. CHECK PAYMENTS TABLE:
+   ```sql
+   SELECT 
+     p.id as payment_id,
+     p.booking_id,
+     p.status as payment_status,
+     p.amount,
+     b.booking_number,
+     b.is_paid,
+     b.payment_status as booking_payment_status
+   FROM payments p
+   JOIN bookings b ON p.booking_id = b.id
+   WHERE p.status = 'completed'
+   ORDER BY p.created_at DESC
+   LIMIT 5;
+   ```
+
+4. CHECK API RESPONSE FORMAT:
+   
+   What does GET /api/bookings/my return?
+   
+   Expected format:
+   ```json
+   {
+     "status": "success",
+     "data": [
+       {
+         "id": 123,
+         "booking_number": "BK123456",
+         "booking_status": "confirmed",
+         "payment_status": "paid",  // ← This field needed
+         "is_paid": true,           // ← Or this field needs mapping
+         "status": "confirmed",
+         "payment_method": "qris"
+       }
+     ]
+   }
+   ```
+
+5. BACKEND FIELD MAPPING NEEDED:
+   
+   Current Frontend Expectation:
+   ```javascript
+   booking.payment_status // Should be "paid" when payment complete
+   ```
+   
+   If backend only has is_paid boolean, add this to API response:
+   ```javascript
+   // In your booking serializer/transformer
+   payment_status: booking.is_paid ? 'paid' : 'pending'
+   ```
+
+6. QUICK FIX OPTIONS:
+   
+   Option A: Add payment_status field to API response
+   ```javascript
+   // Backend code (Node.js example)
+   const bookingWithPaymentStatus = {
+     ...booking,
+     payment_status: booking.is_paid ? 'paid' : 'pending'
+   };
+   ```
+   
+   Option B: Update database to have payment_status column
+   ```sql
+   ALTER TABLE bookings ADD COLUMN payment_status VARCHAR(20) DEFAULT 'pending';
+   UPDATE bookings SET payment_status = 'paid' WHERE is_paid = true;
+   ```
+
+7. CURRENT WORKAROUND:
+   Frontend now checks both fields:
+   ```javascript
+   // 1. Check payment_status field (if exists)
+   // 2. Fallback to is_paid boolean mapping
+   // 3. Default to 'pending'
+   ```
+
+PRIORITY: MEDIUM (frontend workaround implemented, but backend fix preferred) 
