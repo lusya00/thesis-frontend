@@ -1,19 +1,18 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { Anchor, Mail, KeyRound, AlertCircle, Loader2, Eye, EyeOff, Sun, Waves } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
+import { AlertCircle, Anchor, Eye, EyeOff, KeyRound, Loader2, Mail, Sun, Waves } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
 import EnhancedNavbar from "@/components/EnhancedNavbar";
-import LoadingAnimation from "@/components/LoadingAnimation";
 import Footer from "@/components/Footer";
 import GoogleSignInButton from "@/components/GoogleSignInButton";
-import LanguageToggle from "@/components/LanguageToggle";
+import LoadingAnimation from "@/components/LoadingAnimation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "@/hooks/useTranslation";
 import { authService } from "@/lib/services/authService";
 import { createInputHandler, validateForm } from "@/lib/utils/validation";
-import { useTranslation } from "@/hooks/useTranslation";
 
 const LoginPage = () => {
   const { t } = useTranslation();
@@ -88,7 +87,7 @@ const LoginPage = () => {
       });
       toast({
         title: "Validation Error",
-        description: "Please fix the errors in the form before submitting.",
+        description: "Password must be at least 8 characters",
         variant: "destructive"
       });
       return;
