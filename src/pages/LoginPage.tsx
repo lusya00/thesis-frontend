@@ -87,7 +87,7 @@ const LoginPage = () => {
       });
       toast({
         title: "Validation Error",
-        description: "Password must be at least 8 characters",
+        description: "Password must be at least 8 characters.",
         variant: "destructive"
       });
       return;
