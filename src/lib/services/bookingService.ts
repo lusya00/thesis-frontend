@@ -3,7 +3,7 @@ import { debugError, debugLog, debugWarn } from '../utils';
 
 // API Configuration using environment variable
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
-const API_TIMEOUT = 20000;
+const API_TIMEOUT = 60000;
 
 // Log the API URL being used (for debugging)
 debugLog('[BOOKING] Using API Base URL:', API_BASE_URL);
