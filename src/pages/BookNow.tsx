@@ -1,30 +1,28 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { useLocation, useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Calendar, Users, CreditCard, Home, ArrowLeft, Loader2, CheckCircle, Bed } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { PhoneInput } from "@/components/ui/phone-input";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { addDays, differenceInDays, format } from "date-fns";
-import { motion, AnimatePresence } from "framer-motion";
-import EnhancedNavbar from "../components/EnhancedNavbar";
-import LoadingAnimation from "../components/LoadingAnimation";
-import Footer from "../components/Footer";
-import SameDayBookingStatus from "../components/SameDayBookingStatus";
-import EnhancedDatePicker from "../components/EnhancedDatePicker";
-import { homestayService, Homestay } from "@/lib/services/homestayService";
-import { authService } from "@/lib/services/authService";
-import { bookingService, BookingRequest, checkRoomAvailability } from "@/lib/services/bookingService";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { formatCurrency } from '@/utils/format';
 import { useTranslation } from '@/hooks/useTranslation';
+import { authService } from "@/lib/services/authService";
+import { bookingService, checkRoomAvailability } from "@/lib/services/bookingService";
+import { Homestay, homestayService } from "@/lib/services/homestayService";
 import { debugLog } from '@/lib/utils';
+import { formatCurrency } from '@/utils/format';
+import { zodResolver } from "@hookform/resolvers/zod";
+import { addDays, differenceInDays, format } from "date-fns";
+import { motion } from "framer-motion";
+import { ArrowLeft, Bed, Calendar, CheckCircle, Home, Loader2, Users } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { z } from "zod";
+import EnhancedDatePicker from "../components/EnhancedDatePicker";
+import EnhancedNavbar from "../components/EnhancedNavbar";
+import Footer from "../components/Footer";
+import LoadingAnimation from "../components/LoadingAnimation";
 // ✅ NEW: Payment components
 import PaymentPage from '@/components/payment/PaymentPage';
 import PaymentSuccess from '@/components/payment/PaymentSuccess';
@@ -605,20 +603,29 @@ const BookNow = () => {
       
       debugLog("Creating PENDING booking (no emails yet):", pendingBookingData);
       const response = await bookingService.createBooking(pendingBookingData);
-      
-      if (response.status === 'success' && response.data) {
-        // ✅ NEW: Successful booking - show WhatsApp payment instructions
-        debugLog(`[BOOKING] ✅ Booking created successfully, proceeding to WhatsApp/manual payment...`);
-        setBookingData(response.data);
-        setCurrentStep('payment');
-        toast({
-          title: "Booking Pending Payment",
-          description: "Your booking is reserved. Please contact Mr. Rusli via WhatsApp to complete payment.",
-          variant: "default",
-        });
-      } else {
-        throw new Error("Failed to create booking");
-      }
+
+// FIX: flexible response handling for production API
+if (response && (response.data || response.booking || response.id)) {
+
+  const bookingResult = response.data || response.booking || response;
+
+  debugLog(`[BOOKING] ✅ Booking created successfully`, bookingResult);
+
+  setBookingData(bookingResult);
+  setCurrentStep('payment');
+
+  toast({
+    title: "Booking Pending Payment",
+    description: "Your booking is reserved. Please contact Mr. Rusli via WhatsApp to complete payment.",
+    variant: "default",
+  });
+
+} else {
+
+  console.error("Invalid booking response:", response);
+  throw new Error("Failed to create booking");
+
+}
     } catch (error) {
       console.error('Error creating booking:', error);
       
