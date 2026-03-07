@@ -1,6 +1,5 @@
 import axios from 'axios';
-import api from '../../services/apiConfig';
-import { debugLog, debugError, debugWarn } from '../utils';
+import { debugError, debugLog, debugWarn } from '../utils';
 
 // API Configuration using environment variable
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
@@ -174,10 +173,16 @@ export const createGuestBooking = async (bookingData: GuestBookingData): Promise
     debugLog('[BOOKING] Sending cleaned data to API (NO TOKEN):', cleanData);
     
     // Make the API call WITHOUT any authorization headers
-    const response = await apiClient.post<BookingResponse>('/bookings/guest', cleanData);
-    
-    debugLog('[BOOKING] Guest booking created successfully:', response.data);
-    return response.data;
+    const response = await apiClient.post('/bookings/guest', cleanData);
+
+debugLog('[BOOKING] Guest booking created successfully:', response);
+
+const responseData = response?.data || {};
+
+return {
+  status: responseData.status || 'success',
+  data: responseData.data || responseData.booking || responseData
+};
     
   } catch (error: any) {
     debugError('[BOOKING] Guest booking failed:', error);
