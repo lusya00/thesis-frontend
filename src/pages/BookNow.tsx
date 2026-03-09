@@ -603,29 +603,20 @@ const BookNow = () => {
       
       debugLog("Creating PENDING booking (no emails yet):", pendingBookingData);
       const response = await bookingService.createBooking(pendingBookingData);
-
-// FIX: flexible response handling for production API
-if (response && (response.data || response.booking || response.id)) {
-
-  const bookingResult = response.data || response.booking || response;
-
-  debugLog(`[BOOKING] ✅ Booking created successfully`, bookingResult);
-
-  setBookingData(bookingResult);
-  setCurrentStep('payment');
-
-  toast({
-    title: "Booking Pending Payment",
-    description: "Your booking is reserved. Please contact Mr. Rusli via WhatsApp to complete payment.",
-    variant: "default",
-  });
-
-} else {
-
-  console.error("Invalid booking response:", response);
-  throw new Error("Failed to create booking");
-
-}
+      
+      if (response.status === 'success' && response.data) {
+        // ✅ NEW: Successful booking - show WhatsApp payment instructions
+        debugLog(`[BOOKING] ✅ Booking created successfully, proceeding to WhatsApp/manual payment...`);
+        setBookingData(response.data);
+        setCurrentStep('payment');
+        toast({
+          title: "Booking Pending Payment",
+          description: "Your booking is reserved. Please contact Mr. Rusli via WhatsApp to complete payment.",
+          variant: "default",
+        });
+      } else {
+        throw new Error("Failed to create booking");
+      }
     } catch (error) {
       console.error('Error creating booking:', error);
       

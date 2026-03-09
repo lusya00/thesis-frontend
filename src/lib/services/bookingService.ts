@@ -3,7 +3,7 @@ import { debugError, debugLog, debugWarn } from '../utils';
 
 // API Configuration using environment variable
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
-const API_TIMEOUT = 60000;
+const API_TIMEOUT = 20000;
 
 // Log the API URL being used (for debugging)
 debugLog('[BOOKING] Using API Base URL:', API_BASE_URL);
@@ -173,16 +173,10 @@ export const createGuestBooking = async (bookingData: GuestBookingData): Promise
     debugLog('[BOOKING] Sending cleaned data to API (NO TOKEN):', cleanData);
     
     // Make the API call WITHOUT any authorization headers
-    const response = await apiClient.post('/bookings/guest', cleanData);
-
-debugLog('[BOOKING] Guest booking created successfully:', response);
-
-const responseData = response?.data || {};
-
-return {
-  status: responseData.status || 'success',
-  data: responseData.data || responseData.booking || responseData
-};
+    const response = await apiClient.post<BookingResponse>('/bookings/guest', cleanData);
+    
+    debugLog('[BOOKING] Guest booking created successfully:', response.data);
+    return response.data;
     
   } catch (error: any) {
     debugError('[BOOKING] Guest booking failed:', error);
