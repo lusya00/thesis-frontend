@@ -1,15 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
-import { ArrowLeft, Clock, CheckCircle, AlertCircle, Copy, RefreshCw, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
-import { getWhatsAppLink } from '@/utils/whatsappUtils';
-import { checkPaymentStatus } from '@/lib/services/bookingService';
-import type { QRISPaymentResponse } from '@/lib/services/bookingService';
-import { formatCurrency } from '@/utils/format';
-import { debugLog } from '@/lib/utils';
 import { QRCodeComponent } from '@/components/ui/qr-code';
+import type { QRISPaymentResponse } from '@/lib/services/bookingService';
+import { getWhatsAppLink } from '@/utils/whatsappUtils';
+import { ArrowLeft } from 'lucide-react';
+import React, { useEffect } from 'react';
 
 interface PaymentPageProps {
   bookingData: {
@@ -25,7 +20,7 @@ interface PaymentPageProps {
       title: string;
     };
   };
-  paymentData?: QRISPaymentResponse['data']; // Now optional
+  paymentData?: QRISPaymentResponse['data'];
   onPaymentSuccess: () => void;
   onBack: () => void;
 }
@@ -35,6 +30,20 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
   onBack 
 }) => {
   const whatsappLink = getWhatsAppLink(bookingData);
+
+  // ✅ GA4 Data Layer Push — booking confirmed
+  useEffect(() => {
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({
+      event: 'booking_confirmed',
+      transaction_id: bookingData.booking_number,
+      value: bookingData.total_price,
+      currency: 'IDR',
+      homestay: bookingData.homestay?.title || '',
+      room: bookingData.room?.title || '',
+    });
+  }, []);
+
   return (
     <div className="max-w-2xl mx-auto p-4 space-y-6">
       <div className="flex items-center gap-4">
@@ -87,4 +96,4 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
   );
 };
 
-export default PaymentPage; 
+export default PaymentPage;

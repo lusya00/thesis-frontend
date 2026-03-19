@@ -1,10 +1,8 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import { CheckCircle, Calendar, Mail, Phone, Printer, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useNavigate } from 'react-router-dom';
 import { formatCurrency } from '@/utils/format';
+import { CheckCircle, Printer, RotateCcw } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 interface PaymentSuccessProps {
   bookingData: {
@@ -33,6 +31,19 @@ const PaymentSuccess: React.FC<PaymentSuccessProps> = ({
   onNewBooking 
 }) => {
   const navigate = useNavigate();
+
+  // ✅ GA4 Data Layer Push — booking confirmed
+  useEffect(() => {
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({
+      event: 'booking_confirmed',
+      transaction_id: bookingData.booking_number,
+      value: bookingData.total_price,
+      currency: 'IDR',
+      homestay: bookingData.homestay?.title || '',
+      room: bookingData.room?.title || '',
+    });
+  }, []);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('id-ID', {
@@ -121,4 +132,4 @@ Please contact Mr. Rusli via WhatsApp to confirm your booking and receive paymen
   );
 };
 
-export default PaymentSuccess; 
+export default PaymentSuccess;
