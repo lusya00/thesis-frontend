@@ -31,16 +31,24 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
 }) => {
   const whatsappLink = getWhatsAppLink(bookingData);
 
-  // ✅ GA4 Data Layer Push — booking confirmed
+  // ✅ GA4 Data Layer Push — purchase event (format standar GA4 e-commerce)
   useEffect(() => {
     window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({ ecommerce: null });
     window.dataLayer.push({
-      event: 'booking_confirmed',
-      transaction_id: bookingData.booking_number,
-      value: bookingData.total_price,
-      currency: 'IDR',
-      homestay: bookingData.homestay?.title || '',
-      room: bookingData.room?.title || '',
+      event: 'purchase',
+      ecommerce: {
+        transaction_id: bookingData.booking_number,
+        value: bookingData.total_price,
+        currency: 'IDR',
+        items: [{
+          item_id: String(bookingData.id),
+          item_name: bookingData.homestay?.title || 'Homestay Booking',
+          item_category: 'Homestay',
+          price: bookingData.total_price,
+          quantity: 1
+        }]
+      }
     });
   }, []);
 
