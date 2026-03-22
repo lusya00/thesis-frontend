@@ -72,12 +72,12 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <p className="mb-2 font-medium">Please contact Mr. Rusli via WhatsApp to confirm your booking and receive payment instructions.</p>
+            <p className="mb-2 font-medium">Please contact Mr. Nurcholis via WhatsApp to confirm your booking and receive payment instructions.</p>
             <Button
               className="w-full bg-green-600 hover:bg-green-700 text-white py-3 text-lg mb-4"
               onClick={() => window.open(whatsappLink, '_blank')}
             >
-              Contact Mr. Rusli via WhatsApp
+              Contact Mr. Nurcholis via WhatsApp
             </Button>
             
             {/* WhatsApp QR Code */}

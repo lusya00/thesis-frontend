@@ -89,7 +89,7 @@ Check-in: ${formatDate(booking.start_date)}
 Check-out: ${formatDate(booking.end_date)}
 Total Paid: ${formatCurrency(booking.total_price)}
 
-Please contact Mr. Rusli via WhatsApp to confirm your booking and receive payment instructions.
+Please contact Mr. Nurcholis via WhatsApp to confirm your booking and receive payment instructions.
 `;
     return `https://wa.me/6281234567890?text=${encodeURIComponent(message)}`;
   };
@@ -101,12 +101,12 @@ Please contact Mr. Rusli via WhatsApp to confirm your booking and receive paymen
           <CheckCircle className="h-16 w-16 text-green-500" />
         </div>
         <h1 className="text-3xl font-bold text-gray-800 mb-2">Booking Submitted</h1>
-        <p className="text-lg text-gray-600">Please contact Mr. Rusli via WhatsApp to confirm your booking and receive payment instructions.</p>
+        <p className="text-lg text-gray-600">Please contact Mr.Nurcholis via WhatsApp to confirm your booking and receive payment instructions.</p>
         <Button
           className="w-full bg-green-600 hover:bg-green-700 text-white py-3 text-lg mt-4"
           onClick={() => window.open(getWhatsAppLink(bookingData), '_blank')}
         >
-          Contact Mr. Rusli via WhatsApp
+          Contact Mr. Nurcholis via WhatsApp
         </Button>
         <div className="mt-4">
           <span className="font-medium">Booking Number:</span> <span className="font-mono">{bookingData.booking_number}</span>

@@ -611,7 +611,7 @@ const BookNow = () => {
         setCurrentStep('payment');
         toast({
           title: "Booking Pending Payment",
-          description: "Your booking is reserved. Please contact Mr. Rusli via WhatsApp to complete payment.",
+          description: "Your booking is reserved. Please contact Mr. Nurcholis via WhatsApp to complete payment.",
           variant: "default",
         });
       } else {
