@@ -1,6 +1,6 @@
 // WhatsApp utility for payment instructions
 export function getWhatsAppLink(booking) {
-  const rusliNumber = '6281519835694';
+  const rusliNumber = '6287774640097';
   const message = encodeURIComponent(
     `Halo, saya telah melakukan pemesanan.\n` +
     `Nomor pemesanan: ${booking.booking_number}\n` +
