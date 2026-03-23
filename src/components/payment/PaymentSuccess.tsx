@@ -35,18 +35,18 @@ const PaymentSuccess: React.FC<PaymentSuccessProps> = ({
   // ✅ GA4 Data Layer Push — purchase event (format standar GA4 e-commerce)
   useEffect(() => {
     window.dataLayer = window.dataLayer || [];
-    window.dataLayer.push({ ecommerce: null }); // Clear previous ecommerce data
+    window.dataLayer.push({ ecommerce: null });
     window.dataLayer.push({
       event: 'purchase',
       ecommerce: {
         transaction_id: bookingData.booking_number,
-        value: bookingData.total_price,
+        value: parseFloat(String(bookingData.total_price)) || 0,
         currency: 'IDR',
         items: [{
           item_id: String(bookingData.id),
           item_name: bookingData.homestay?.title || 'Homestay Booking',
           item_category: 'Homestay',
-          price: bookingData.total_price,
+          price: parseFloat(String(bookingData.total_price)) || 0,
           quantity: 1
         }]
       }

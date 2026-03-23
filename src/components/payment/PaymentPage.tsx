@@ -39,13 +39,13 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
       event: 'purchase',
       ecommerce: {
         transaction_id: bookingData.booking_number,
-        value: bookingData.total_price,
+        value: parseFloat(String(bookingData.total_price)) || 0,
         currency: 'IDR',
         items: [{
           item_id: String(bookingData.id),
           item_name: bookingData.homestay?.title || 'Homestay Booking',
           item_category: 'Homestay',
-          price: bookingData.total_price,
+          price: parseFloat(String(bookingData.total_price)) || 0,
           quantity: 1
         }]
       }
