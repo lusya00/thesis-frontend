@@ -1077,7 +1077,7 @@ const BookNow = () => {
                   {/* Desktop Enhanced Date Picker */}
                   {showEnhancedDatePicker && (
                     <div className="hidden lg:block mb-8">
-                      <<EnhancedDatePicker
+                      <EnhancedDatePicker
                         roomId={homestay?.rooms?.find(r => r.id === selectedRoomId)?.room_id || selectedRoomId || 0}
                         roomName={homestay?.rooms?.find(r => r.id === selectedRoomId)?.name}
                         onDateSelect={(startDate, endDate) => {
