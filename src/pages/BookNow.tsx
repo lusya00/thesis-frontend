@@ -1077,8 +1077,8 @@ const BookNow = () => {
                   {/* Desktop Enhanced Date Picker */}
                   {showEnhancedDatePicker && (
                     <div className="hidden lg:block mb-8">
-                      <EnhancedDatePicker
-                        roomId={selectedRoomId || 0}
+                      <<EnhancedDatePicker
+                        roomId={homestay?.rooms?.find(r => r.id === selectedRoomId)?.room_id || selectedRoomId || 0}
                         roomName={homestay?.rooms?.find(r => r.id === selectedRoomId)?.name}
                         onDateSelect={(startDate, endDate) => {
                           debugLog('[BOOKING] Visual calendar date selected:', { startDate, endDate });
@@ -1440,7 +1440,7 @@ const BookNow = () => {
                           <div className="lg:hidden">
                             {/* Mobile View: Full-width enhanced date picker */}
                             <EnhancedDatePicker
-                              roomId={selectedRoomId || 0}
+                              roomId={homestay?.rooms?.find(r => r.id === selectedRoomId)?.room_id || selectedRoomId || 0}
                               roomName={homestay?.rooms?.find(r => r.id === selectedRoomId)?.name}
                               onDateSelect={(startDate, endDate) => {
                                 debugLog('[BOOKING] Mobile visual calendar date selected:', { startDate, endDate });
