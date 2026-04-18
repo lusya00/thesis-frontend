@@ -78,7 +78,7 @@ const RecommendationQuizPage = () => {
         need_breakfast: answers.need_breakfast === "true",
         need_motor_rental: answers.need_motor_rental === "true",
       };
-      const response = await fetch("https://untungjawa-backend-production.up.railway.app/api/rekomendasi"), {
+      const response = await fetch("https://untungjawa-backend-production.up.railway.app/api/rekomendas"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
