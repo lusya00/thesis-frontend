@@ -4,8 +4,8 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 
 /* ================== IMAGE ================== */
-const CHARACTER_IMG = "public/icon_couple-removebg-preview.png"; 
-const ICON_IMG = "public/icon widget untung jawa.jpg"; 
+const CHARACTER_IMG = "/icon_couple-removebg-preview.png"; 
+const ICON_IMG = "/icon widget untung jawa.jpg";
 /* ================== WIDGET ================== */
 export const RecommendationWidget = () => {
   const [showCaption, setShowCaption] = useState(true);
