@@ -1,4 +1,5 @@
 import { ChatBot } from "@/components/ChatBot";
+import { RecommendationWidget } from "@/components/RecommendationWidget";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -10,12 +11,10 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-route
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
-// Lazy load heavy components for better performance
 const BookNow = lazy(() => import("./pages/BookNow"));
 const AccommodationPage = lazy(() => import("./pages/AccommodationPage"));
 const HomestayDetailPage = lazy(() => import("./pages/HomestayDetailPage"));
 const ActivitiesPage = lazy(() => import("./pages/ActivitiesPage"));
-
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const SignupPage = lazy(() => import("./pages/SignupPage"));
 const UserDashboard = lazy(() => import("./pages/UserDashboard"));
@@ -27,8 +26,8 @@ const ProfileManagement = lazy(() => import("./pages/ProfileManagement"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const Terms = lazy(() => import("./pages/Terms"));
 const Sitemap = lazy(() => import("./pages/Sitemap"));
-
-// import OAuthDebugger from '@/components/OAuthDebugger'; // Uncomment if debug route is needed
+const RecommendationPage = lazy(() => import("./pages/RecommendationPage"));
+const RecommendationQuizPage = lazy(() => import("./pages/RecommendationQuizPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -54,10 +53,8 @@ const LoadingFallback = () => (
   </div>
 );
 
-// OAuth Callback Component (Local)
 const LocalOAuthCallback = () => {
   const { isProcessing } = useOAuthCallback();
-  
   if (isProcessing) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -68,14 +65,11 @@ const LocalOAuthCallback = () => {
       </div>
     );
   }
-  
   return null;
 };
 
-// OAuth Dashboard Redirect Component
 const DashboardRedirect = () => {
   const { isProcessing } = useOAuthCallback();
-  
   if (isProcessing) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -86,32 +80,19 @@ const DashboardRedirect = () => {
       </div>
     );
   }
-  
-  // After OAuth processing, redirect to user dashboard
   return <Navigate to="/user/dashboard" replace />;
 };
 
-// Scroll to Top Component
 const ScrollToTop = () => {
   const { pathname } = useLocation();
-
   useEffect(() => {
-    // Smooth scroll to top on route change
-    window.scrollTo({
-      top: 0,
-      left: 0,
-      behavior: "smooth"
-    });
+    window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
   }, [pathname]);
-
   return null;
 };
 
-// Main App Routes Component (inside Router context)
 const AppRoutes = () => {
-  // Global OAuth handler - now runs inside Router context
   useOAuthCallback();
-  
   return (
     <Suspense fallback={<LoadingFallback />}>
       <div className="min-h-screen bg-background">
@@ -122,36 +103,29 @@ const AppRoutes = () => {
           <Route path="/book" element={<BookNow />} />
           <Route path="/homestays" element={<AccommodationPage />} />
           <Route path="/activities" element={<ActivitiesPage />} />
-
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/homestay/:id" element={<HomestayDetailPage />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/sitemap" element={<Sitemap />} />
-          
-          {/* OAuth callback routes */}
+          <Route path="/rekomendasi" element={<RecommendationPage />} />
+          <Route path="/rekomendasi/quiz" element={<RecommendationQuizPage />} />
+
           <Route path="/auth/callback" element={<LocalOAuthCallback />} />
           <Route path="/oauth/callback" element={<LocalOAuthCallback />} />
           <Route path="/api/oauth/google/callback" element={<LocalOAuthCallback />} />
-          
-          {/* Debug routes - Uncomment if needed for OAuth debugging */}
-          {/* <Route path="/debug/oauth" element={<OAuthDebugger />} /> */}
-          
-          
-          {/* Dashboard routes */}
+
           <Route path="/dashboard" element={<DashboardRedirect />} />
           <Route path="/dashboard/*" element={<Navigate to="/user/dashboard" replace />} />
-          
-          {/* User dashboard and booking routes */}
+
           <Route path="/user/dashboard" element={<UserDashboard />} />
           <Route path="/user/bookings" element={<UserDashboard />} />
           <Route path="/user/settings" element={<UserDashboard />} />
           <Route path="/user/profile" element={<UserDashboard />} />
           <Route path="/profile-management" element={<ProfileManagement />} />
           <Route path="/booking/:bookingId" element={<BookingDetailPage />} />
-          
-          {/* Catch-all route */}
+
           <Route path="*" element={<NotFound />} />
         </Routes>
       </div>
@@ -166,8 +140,9 @@ const App = () => {
         <TooltipProvider>
           <Toaster />
           <Sonner />
-          <ChatBot />
           <BrowserRouter>
+            <ChatBot />
+            <RecommendationWidget />
             <ScrollToTop />
             <AppRoutes />
           </BrowserRouter>
@@ -177,4 +152,4 @@ const App = () => {
   );
 };
 
-export default App; 
+export default App;
