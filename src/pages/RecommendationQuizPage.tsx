@@ -78,7 +78,7 @@ const RecommendationQuizPage = () => {
         need_breakfast: answers.need_breakfast === "true",
         need_motor_rental: answers.need_motor_rental === "true",
       };
-      const response = await fetch("https://untungjawa-backend-production.up.railway.app/api/rekomendas"), {
+      const response = await fetch("https://untungjawa-backend-production.up.railway.app/api/rekomendasi", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -303,7 +303,6 @@ const RecommendationQuizPage = () => {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6 }}
             >
-              {/* Speech bubble DI ATAS karakter dengan jarak cukup */}
               <AnimatePresence mode="wait">
                 <motion.div
                   key={`bubble-${currentQuestion}`}
@@ -317,11 +316,9 @@ const RecommendationQuizPage = () => {
                   <p className="text-xs font-semibold text-gray-700 leading-snug">
                     {questions[currentQuestion].guideMsg}
                   </p>
-                  {/* Arrow bawah */}
                 </motion.div>
               </AnimatePresence>
 
-              {/* Karakter image — lebih besar */}
               <motion.img
                 src="/icon_cewe-removebg-preview.png"
                 alt="Pemandu Quiz"
@@ -331,7 +328,6 @@ const RecommendationQuizPage = () => {
                 transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
               />
 
-              {/* Emoji pertanyaan */}
               <AnimatePresence mode="wait">
                 <motion.div
                   key={`emoji-${currentQuestion}`}
@@ -437,7 +433,6 @@ const RecommendationQuizPage = () => {
                         whileHover={{ scale: 1.03, boxShadow: '0 8px 24px rgba(34,211,238,0.4)' }}
                         whileTap={{ scale: 0.97 }}
                       >
-                        {/* Shimmer */}
                         <motion.div
                           className="absolute inset-0 opacity-20"
                           style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent)' }}
@@ -463,7 +458,6 @@ const RecommendationQuizPage = () => {
               </AnimatePresence>
             </div>
           </div>
-
         </div>
       </div>
       <Footer />
